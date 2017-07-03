@@ -1,0 +1,6 @@
+Don't change makefile :  --xorriso="/home/ros/OS/xorrios/xorriso-1.4.6/xorriso/xorriso"
+
+1.make 
+2.make mykernel.iso 
+3.make run
+
