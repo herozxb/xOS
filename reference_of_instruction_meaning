@@ -1,0 +1,71 @@
+General registers
+EAX EBX ECX EDX
+
+Segment registers
+CS DS ES FS GS SS
+
+Index and pointers
+ESI EDI EBP EIP ESP
+
+Indicator
+EFLAGS
+
+AX            : Accumulator
+BX            : Base        register
+CX            : Counter     register
+DX            : Data        register
+
+
+
+ES:EDI EDI DI : Destination index register
+                Used for string, memory array copying and setting and
+                for far pointer addressing with ES
+
+DS:ESI EDI SI : Source index register
+                Used for string and memory array copying
+
+SS:EBP EBP BP : Stack Base pointer register
+                Holds the base address of the stack
+                
+SS:ESP ESP SP : Stack pointer register
+                Holds the top address of the stack
+
+CS:EIP EIP IP : Index Pointer
+                Holds the offset of the next instruction
+                It can only be read 
+
+Instruction Pointer (IP) 
+Stack Pointer (SP) 
+Base Pointer (BP) 
+Source Index (SI)
+Destination Index (DI) 
+
+
+%esp          : stack pointer : The ESP register serves as an indirect memory operand pointing to the top of the stack at any time.
+
+cs            : Code   Segment register
+ds            : Data   Segment register
+es            : Extra  Segment register
+fs            : anything
+gs            : anything
+ss            : Stack  Segment register
+
+
+
+
+
+
+
+
+
+
+
+Overflow Flag (OF) 
+Direction Flag (DF)
+Interrupt Flag (IF)
+Trap Flag (TF) 
+Sign Flag (SF) 
+Zero Flag (ZF) 
+Auxiliary Carry Flag (AF) 
+Parity Flag (PF)
+Carry Flag (CF) 
