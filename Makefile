@@ -31,7 +31,7 @@ mykernel.iso: mykernel.bin
 	echo '  multiboot /boot/mykernel.bin'    >> iso/boot/grub/grub.cfg
 	echo '  boot'                            >> iso/boot/grub/grub.cfg
 	echo '}'                                 >> iso/boot/grub/grub.cfg
-	grub-mkrescue --output=mykernel.iso iso --xorriso="./xorrios/xorriso-1.4.6/xorriso/xorriso"
+	grub-mkrescue --output=mykernel.iso iso 
 	rm -rf iso
 
 run: mykernel.iso

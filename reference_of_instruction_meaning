@@ -51,15 +51,6 @@ gs            : anything
 ss            : Stack  Segment register
 
 
-
-
-
-
-
-
-
-
-
 Overflow Flag (OF) 
 Direction Flag (DF)
 Interrupt Flag (IF)
@@ -69,3 +60,6 @@ Zero Flag (ZF)
 Auxiliary Carry Flag (AF) 
 Parity Flag (PF)
 Carry Flag (CF) 
+
+
+iret          : interrupt return

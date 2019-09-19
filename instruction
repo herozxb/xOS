@@ -1,5 +1,8 @@
 Don't change makefile :  --xorriso="/home/ros/OS/xorrios/xorriso-1.4.6/xorriso/xorriso"
 
+# sudo apt-get install g++ binutils libc6-dev-i386
+# sudo apt-get install VirtualBox grub-legacy xorriso
+
 1.make 
 2.make mykernel.iso 
 3.make run
