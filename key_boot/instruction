@@ -1,0 +1,89 @@
+nasm -f bin Boot1.asm -o Boot1.bin
+dd if=Boot1.bin of=disk.img count=1440 bs=1k
+dd if=Boot1.bin of=disk.img conv=notrunc 
+
+dd if=/dev/zero of=disk.img bs=1024 count=1440
+
+
+mkfs.vfat myimage.vfd
+sudo mount -o loop myimage.vfd /mnt
+...
+sudo umount /mnt
+
+
+
+mkfs.msdos -C /path/imagefile.img 1440
+sudo mkdir /media/floppy1/
+sudo mount -o loop /path/imagefile.img /media/floppy1/
+sudo umount /media/floppy1/
+dd bs=512 count=2880 if=/dev/fda of=/path/imagefile.img
+
+
+
+
+mkfs.msdos -C test.img 1440
+cat Boot1.bin test.img
+dd if=Boot1.bin of=test.img conv=notrunc 
+sudo mount -o loop test.img /media/floppy1/
+sudo cp STAGE2.SYS /media/floppy1/
+sudo umount /media/floppy1/
+
+
+dd if=Boot1.bin of=MBR.img bs=512 count=1
+dd if=boot.bin bs=512 of=/dev/fd0
+
+
+sudo qemu-system-i386 -m 32 -boot a -fda MBR.img
+
+mkfs.msdos -C myfloppy.img 1440
+sudo mount -o loop myfloppy.img /media/floppy/
+sudo cp oakcdrom.sys /media/floppy/
+ls -l /media/floppy/
+sudo umount /media/floppy
+sudo rm -rf /media/floppy/
+
+
+dd bs=512 count=2880 if=/dev/zero of=floppy.img
+
+
+
+dd if=/dev/zero of=floppy.img bs=512 count=2948
+mkfs.vfat floppy.img
+
+
+
+
+#It's only 378 bytes... you CAN do this, but if you absolutely need a starting place, use the command:
+
+     dd bs=1 count=378 of=myBoot.bin if=floppy.img skip=62 conv=notrunc
+
+#Finally, overwrite the stock MBR of the floppy with your custom myBoot.bin program:
+
+dd bs=1 count=378 if=myBoot.bin of=floppy.img seek=62 conv=notrunc
+
+
+
+
+nasm -f bin Boot1.asm -o Boot1.bin
+nasm -f bin Stage2.asm -o KRNLDR.SYS
+dd bs=1 count=512 if=Boot1.bin of=floppy.img conv=notrunc
+sudo mount -o loop floppy.img /media/floppy/
+sudo cp KRNLDR.SYS /media/floppy
+sudo umount /media/floppy
+qemu-system-i386 -fda floppy.img
+
+
+
+##finial one
+nasm -f bin Boot1.asm -o Boot1.bin
+nasm -f bin Stage2.asm -o KRNLDR.SYS
+dd if=/dev/zero of=floppy.img bs=512 count=2948
+mkfs.vfat floppy.img
+dd bs=1 count=512 if=Boot1.bin of=floppy.img conv=notrunc
+qemu-system-i386 -fda floppy.img
+sudo mount -o loop floppy.img /media/floppy/
+sudo cp KRNLDR.SYS /media/floppy
+sudo umount /media/floppy
+qemu-system-i386 -fda floppy.img
+
+
