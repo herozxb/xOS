@@ -1,19 +1,18 @@
 
-#include <gdt.h>
-using namespace myos;
-using namespace myos::common;
+#include "gdt.h"
 
 
 GlobalDescriptorTable::GlobalDescriptorTable()
-    : nullSegmentSelector(0, 0, 0),
+    : nullSegmentSelector(0, 0, 0), //8 bytes
         unusedSegmentSelector(0, 0, 0),
-        codeSegmentSelector(0, 64*1024*1024, 0x9A),
+        codeSegmentSelector(0, 64*1024*1024, 0x9A), // base, limit, type
         dataSegmentSelector(0, 64*1024*1024, 0x92)
 {
-    uint32_t i[2];
-    i[1] = (uint32_t)this;
+    uint32_t i[2];		//8 bytes
+    i[1] = (uint32_t)this;	//4 bytes
     i[0] = sizeof(GlobalDescriptorTable) << 16;
-    asm volatile("lgdt (%0)": :"p" (((uint8_t *) i)+2));
+    asm volatile("lgdt (%0)": :"p" (((uint8_t *) i)+2)); // to tell the cpu to use the table
+                 //lgdt is load global descriptor table
 }
 
 GlobalDescriptorTable::~GlobalDescriptorTable()
@@ -22,7 +21,7 @@ GlobalDescriptorTable::~GlobalDescriptorTable()
 
 uint16_t GlobalDescriptorTable::DataSegmentSelector()
 {
-    return (uint8_t*)&dataSegmentSelector - (uint8_t*)this;
+    return (uint8_t*)&dataSegmentSelector - (uint8_t*)this; //(uint8_t*) point to  the 1byte datatype
 }
 
 uint16_t GlobalDescriptorTable::CodeSegmentSelector()
@@ -34,11 +33,11 @@ GlobalDescriptorTable::SegmentDescriptor::SegmentDescriptor(uint32_t base, uint3
 {
     uint8_t* target = (uint8_t*)this;
 
-    if (limit <= 65536)
+    if (limit <= 65536) //16 bytes
     {
         // 16-bit address space
-        target[6] = 0x40;
-    }
+        target[6] = 0x40; //2*(4bits) 4 * 16 = 64
+     }
     else
     {
         // 32-bit address space
@@ -57,7 +56,7 @@ GlobalDescriptorTable::SegmentDescriptor::SegmentDescriptor(uint32_t base, uint3
         else
             limit = limit >> 12;
 
-        target[6] = 0xC0;
+        target[6] = 0xC0; // 208
     }
 
     // Encode the limit
@@ -100,4 +99,3 @@ uint32_t GlobalDescriptorTable::SegmentDescriptor::Limit()
 
     return result;
 }
-

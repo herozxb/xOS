@@ -1,7 +1,5 @@
-
 #include <hardwarecommunication/port.h>
-using namespace myos::common;
-using namespace myos::hardwarecommunication;
+//#include "port.h"
 
 
 Port::Port(uint16_t portnumber)
@@ -99,4 +97,3 @@ uint32_t Port32Bit::Read()
 {
     return Read32(portnumber);
 }
-
