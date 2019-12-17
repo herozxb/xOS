@@ -1,20 +1,42 @@
-#ifndef _STRING_H_1
-#define _STRING_H_1
+#ifndef _HAL_H
+#define _HAL_H
 //****************************************************************************
 //**
-//**    [string.h]
-//**    - Standard C String routines
+//**    Hal.h
+//**		Hardware Abstraction Layer Interface
+//**
+//**	The Hardware Abstraction Layer (HAL) provides an abstract interface
+//**	to control the basic motherboard hardware devices. This is accomplished
+//**	by abstracting hardware dependencies behind this interface.
+//**
+//**	All routines and types are declared extern and must be defined within
+//**	external libraries to define specific hal implimentations.
 //**
 //****************************************************************************
+
+#ifndef ARCH_X86
+#pragma error "HAL not implimented for this platform"
+#endif
+
 //============================================================================
 //    INTERFACE REQUIRED HEADERS
 //============================================================================
 
-#include <size_t.h>
+#include <stdint.h>
 
 //============================================================================
 //    INTERFACE DEFINITIONS / ENUMERATIONS / SIMPLE TYPEDEFS
 //============================================================================
+
+#ifdef _MSC_VER
+#define interrupt __declspec (naked)
+#else
+#define interrupt
+#endif
+
+#define far
+#define near
+
 //============================================================================
 //    INTERFACE CLASS PROTOTYPES / EXTERNAL CLASS REFERENCES
 //============================================================================
@@ -28,12 +50,14 @@
 //    INTERFACE FUNCTION PROTOTYPES
 //============================================================================
 
-extern char *strcpy(char *s1, const char *s2);
-extern size_t strlen ( const char* str );
+//! initialize hardware abstraction layer
+extern	int				hal_initialize ();
 
-extern void* memcpy(void *dest, const void *src, size_t count);
-extern void *memset(void *dest, char val, size_t count);
-extern unsigned short* memsetw(unsigned short *dest, unsigned short val, size_t count);
+//! shutdown hardware abstraction layer
+extern	int				hal_shutdown ();
+
+//! generates interrupt
+extern	void			geninterrupt (int n);
 
 //============================================================================
 //    INTERFACE OBJECT CLASS DEFINITIONS
@@ -43,8 +67,7 @@ extern unsigned short* memsetw(unsigned short *dest, unsigned short val, size_t 
 //============================================================================
 //****************************************************************************
 //**
-//**    END [string.h]
+//**    END [Hal.h]
 //**
 //****************************************************************************
-
 #endif

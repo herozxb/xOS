@@ -10,7 +10,7 @@
 //    INTERFACE REQUIRED HEADERS
 //============================================================================
 
-#include <size_t.h>
+#include "size_t.h"
 
 //============================================================================
 //    INTERFACE DEFINITIONS / ENUMERATIONS / SIMPLE TYPEDEFS

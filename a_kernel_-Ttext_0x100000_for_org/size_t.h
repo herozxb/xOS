@@ -1,20 +1,31 @@
-#ifndef _STRING_H_1
-#define _STRING_H_1
+#ifndef __SIZE_T_H
+#define	__SIZE_T_H
+
 //****************************************************************************
 //**
-//**    [string.h]
-//**    - Standard C String routines
+//**    size_t.h
+//**    - Standard C and C++ size_t type
 //**
 //****************************************************************************
 //============================================================================
 //    INTERFACE REQUIRED HEADERS
 //============================================================================
-
-#include <size_t.h>
-
 //============================================================================
 //    INTERFACE DEFINITIONS / ENUMERATIONS / SIMPLE TYPEDEFS
 //============================================================================
+
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
+/* standard size_t type */
+typedef unsigned size_t;
+
+#ifdef __cplusplus
+}
+#endif
+
 //============================================================================
 //    INTERFACE CLASS PROTOTYPES / EXTERNAL CLASS REFERENCES
 //============================================================================
@@ -27,14 +38,6 @@
 //============================================================================
 //    INTERFACE FUNCTION PROTOTYPES
 //============================================================================
-
-extern char *strcpy(char *s1, const char *s2);
-extern size_t strlen ( const char* str );
-
-extern void* memcpy(void *dest, const void *src, size_t count);
-extern void *memset(void *dest, char val, size_t count);
-extern unsigned short* memsetw(unsigned short *dest, unsigned short val, size_t count);
-
 //============================================================================
 //    INTERFACE OBJECT CLASS DEFINITIONS
 //============================================================================
@@ -43,7 +46,7 @@ extern unsigned short* memsetw(unsigned short *dest, unsigned short val, size_t 
 //============================================================================
 //****************************************************************************
 //**
-//**    END [string.h]
+//**    END size_t.h
 //**
 //****************************************************************************
 
