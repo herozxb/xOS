@@ -2,7 +2,7 @@
 
 #include "Hal.h"
 #include "DebugDisplay.h"
-
+#include "idt.h"
 
 
 extern "C" void main() {
@@ -26,5 +26,11 @@ extern "C" void main() {
 	hal_initialize ();
 
 //! uncomment to generate interrupt 0x15. This will call the default exception handler
-//	geninterrupt (0x15);
+	geninterrupt (0x15);
+
+//! registers our interrupt handler
+//i86_install_ir (5, I86_IDT_DESC_PRESENT | I86_IDT_DESC_BIT32,0x8, (I86_IRQ_HANDLER)int_handler_5);
+ 
+//! generates int 5 instruction. You can also use inline assembly, of course
+//geninterrupt (5);
 }

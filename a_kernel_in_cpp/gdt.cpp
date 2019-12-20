@@ -73,6 +73,7 @@ static void gdt_install ();
 
 //! install gdtr
 static void gdt_install () {
+asm volatile("lgdt %0": :"m" (_gdtr));
 #ifdef _MSC_VER
 	_asm lgdt [_gdtr]
 #endif

@@ -94,7 +94,7 @@ extern int i86_install_ir (uint32_t i, uint16_t flags, uint16_t sel, I86_IRQ_HAN
 // initialize basic idt
 extern int i86_idt_initialize (uint16_t codeSel);
 
-
+extern void int_handler_5();
 
 #ifdef __cplusplus
 }

@@ -29,3 +29,8 @@ gcc -ffreestanding -m32 -c cpu.c -o cpu.o
 gcc -ffreestanding -m32 -c gdt.c -o gdt.o
 gcc -ffreestanding -m32 -c idt.c -o idt.o
 ld -o KRNL.SYS  -m elf_i386 -Ttext 0x100000 kernel_entry.o kernel.o DebugDisplay.o string.o Hal.o cpu.o gdt.o  --oformat binary
+
+
+# step 6 debug
+objdump -D -b binary -m i386:x86-64 KRNL.SYS
+target remote :1234

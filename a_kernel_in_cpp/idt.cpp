@@ -14,6 +14,7 @@
 #include "idt.h"
 #include "string.h"
 #include "Hal.h"
+#include "DebugDisplay.h"
 #ifdef _DEBUG
 #include "DebugDisplay.h"
 #endif
@@ -27,6 +28,29 @@
 //============================================================================
 //    IMPLEMENTATION PRIVATE STRUCTURES / UTILITY CLASSES
 //============================================================================
+
+
+void int_handler_5 () {
+ 
+     asm volatile (
+         ".intel_syntax noprefix \n\t"
+         "add esp, 12 \n\t"
+         "pushad \n\t"
+         "popad \n\t"
+         "iretd \n\t"
+         ".att_syntax"
+         );
+ /*
+	_asm add esp, 12
+	_asm pushad
+ 
+	// do whatever...
+ 
+	_asm popad
+	_asm iretd
+	//*/
+}
+
 
 #ifdef _MSC_VER
 #pragma pack (push, 1)
@@ -78,6 +102,11 @@ static void i86_default_handler ();
 
 //! installs idtr into processors idtr register
 static void idt_install () {
+asm volatile("lidt %0": :"m" (_idtr));
+
+DebugPrintf ("\nlimit is [0x%d]",_idtr.limit);
+DebugPrintf ("\nbase  is [0x%d]",_idtr.base);
+
 #ifdef _MSC_VER
 	_asm lidt [_idtr]
 #endif
@@ -86,6 +115,11 @@ static void idt_install () {
 
 //! default handler to catch unhandled system interrupts.
 static void i86_default_handler () {
+
+	DebugClrScr (0x18);
+	DebugGotoXY (0,0);
+	DebugSetColor (0x1e);
+	DebugPuts ("*** [i86 Hal] i86_default_handler: Unhandled Exception");
 
 #ifdef _DEBUG
 	DebugClrScr (0x18);
