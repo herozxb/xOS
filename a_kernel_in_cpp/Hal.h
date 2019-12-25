@@ -60,8 +60,8 @@ extern	int				hal_shutdown ();
 
 //! generates interrupt
 extern	void			geninterrupt (int n);
-
-
+//extern	void			geninterrupt ();
+extern void test();
 
 #ifdef __cplusplus
 }

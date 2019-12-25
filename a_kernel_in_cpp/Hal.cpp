@@ -61,10 +61,40 @@ int hal_shutdown () {
 	return 0;
 }
 
+void geninterrupt(int n){
+	__asm__ (
+	    ".intel_syntax noprefix \n\t"
+			"mov byte ptr [genint+1], al\n\t"
+			"jmp genint\n"
+			"genint:\n\t"
+			"int 0\n\t" // above code modifies the 0 to int number to generate
+			".att_syntax"
+			:
+			:"a"(n)
+			);
+}
+
+
+
 //! generate interrupt call
+/*
 void geninterrupt (int n) {
+//*/
+/*
     DebugPrintf ("\n[0x%x]",n);
 
+    
+        asm volatile (
+        "movb (%0), %%al  \n\t"
+        "movb %%al, (genint+1) \n\t"
+        "jmp genint  \n\t"
+        "genint:\n\t"
+        "int $0 \n\t"
+        :
+        : "r" (n)           
+        );
+        
+        //*/
 /*
     asm volatile (
         ".intel_syntax noprefix \n\t"
@@ -76,6 +106,7 @@ void geninterrupt (int n) {
         );
 //*/
 
+/*
     asm volatile (
         ".intel_syntax noprefix \n\t"
         "mov byte ptr [genint+1], al\n\t" 
@@ -84,6 +115,7 @@ void geninterrupt (int n) {
         ::"a"(n)    
         );
   //*/      
+  /*
 #ifdef _MSC_VER
 	_asm {
 		mov al, byte ptr [n]
@@ -94,6 +126,7 @@ void geninterrupt (int n) {
 	}
 #endif
 }
+//*/
 
 /*
 00000024 <geninterrupt>:

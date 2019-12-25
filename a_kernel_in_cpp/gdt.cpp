@@ -13,7 +13,8 @@
 //============================================================================
 
 #include "gdt.h"
-#include "string.h"
+//#include "string.h"
+//#include "tss.h"
 
 //============================================================================
 //    IMPLEMENTATION PRIVATE DEFINITIONS / ENUMERATIONS / SIMPLE TYPEDEFS
@@ -25,24 +26,6 @@
 //    IMPLEMENTATION PRIVATE STRUCTURES / UTILITY CLASSES
 //============================================================================
 
-#ifdef _MSC_VER
-#pragma pack (push, 1)
-#endif
-
-//! processor gdtr register points to base of gdt. This helps
-//! us set up the pointer
-struct gdtr {
-
-	//! size of gdt
-	uint16_t		m_limit;
-
-	//! base address of gdt
-	uint32_t		m_base;
-};
-
-#ifdef _MSC_VER
-#pragma pack (pop, 1)
-#endif
 
 //============================================================================
 //    IMPLEMENTATION REQUIRED EXTERNAL REFERENCES (AVOID)
@@ -51,18 +34,19 @@ struct gdtr {
 //    IMPLEMENTATION PRIVATE DATA
 //============================================================================
 
-//! global descriptor table is an array of descriptors
-static struct gdt_descriptor	_gdt [MAX_DESCRIPTORS];
-
-//! gdtr data
-static struct gdtr				_gdtr;
-
 //============================================================================
 //    INTERFACE DATA
 //============================================================================
 //============================================================================
 //    IMPLEMENTATION PRIVATE FUNCTION PROTOTYPES
 //============================================================================
+
+// global descriptor table is an array of descriptors
+static struct gdt_descriptor	_gdt [MAX_DESCRIPTORS];
+
+// gdtr data
+struct gdtr				_gdtr; // used for assembly
+struct tss_entry tss={0};
 
 //! install gdtr
 static void gdt_install ();
@@ -71,19 +55,11 @@ static void gdt_install ();
 //    IMPLEMENTATION PRIVATE FUNCTIONS
 //============================================================================
 
-//! install gdtr
-static void gdt_install () {
-asm volatile("lgdt %0": :"m" (_gdtr));
-#ifdef _MSC_VER
-	_asm lgdt [_gdtr]
-#endif
-}
-
 //============================================================================
 //    INTERFACE FUNCTIONS
 //============================================================================
 
-
+#include "string.h"
 //! Setup a descriptor in the Global Descriptor Table
 void gdt_set_descriptor(uint32_t i, uint64_t base, uint64_t limit, uint8_t access, uint8_t grand)
 {
@@ -91,7 +67,7 @@ void gdt_set_descriptor(uint32_t i, uint64_t base, uint64_t limit, uint8_t acces
 		return;
 
 	//! null out the descriptor
-	memset ((void*)&_gdt[i], 0, sizeof (gdt_descriptor));
+	memset ((void*)&_gdt[i], '0', sizeof (gdt_descriptor));
 
 	//! set limit and base addresses
 	_gdt[i].baseLo	= uint16_t(base & 0xffff);
@@ -107,7 +83,7 @@ void gdt_set_descriptor(uint32_t i, uint64_t base, uint64_t limit, uint8_t acces
 
 
 //! returns descriptor in gdt
-gdt_descriptor* i86_gdt_get_descriptor (int i) {
+gdt_descriptor* gdt_get_descriptor (int i) {
 
 	if (i > MAX_DESCRIPTORS)
 		return 0;
@@ -115,9 +91,51 @@ gdt_descriptor* i86_gdt_get_descriptor (int i) {
 	return &_gdt[i];
 }
 
+void tss_init(uint32_t sel) {
+	uint32_t base = (uint32_t) &tss;
+	gdt_set_descriptor (sel, base, base + sizeof(tss),
+		GDT_DESC_ACCESS|GDT_DESC_EXEC_CODE|GDT_DESC_DPL|GDT_DESC_MEMORY,
+		0);
+}
+
+
+void tss_install (uint32_t sel) {
+
+	memset((void *)&tss, 0, sizeof(tss));
+
+	// Here we set the cs, ss, ds, es, fs and gs entries in the TSS. These specify what
+	// segments should be loaded when the processor switches to kernel mode. Therefore
+	// they are just our normal kernel code/data segments - 0x08 and 0x10 respectively,
+	// but with the last two bits set, making 0x0b and 0x13. The setting of these bits
+	// sets the RPL (requested privilege level) to 3, meaning that this TSS can be used
+	// to switch to kernel mode from ring 3.
+	tss.ss0 = KERNEL_DS;
+	tss.esp0 = 0x0;
+	tss.cs = KERNEL_CS | DPL_USER;
+	tss.ss = tss.es = tss.ds = tss.fs = tss.gs = KERNEL_DS | DPL_USER;
+
+	__asm__ volatile (
+		  ".intel_syntax noprefix \n\t"
+			"ltr ax\n\t"
+			".att_syntax"
+			:
+			:"a"(sel << 3)
+			:
+			);
+}
+
+void tss_set_stack (uint32_t ss, uint32_t esp) {
+
+	// memset((void *)&tss, 0, sizeof(tss));
+	tss.ss0 = ss;
+	tss.esp0 = esp;
+	// tss.ebp = ebp;
+	// tss.iomap = sizeof(tss);
+}
+
 
 //! initialize gdt
-int i86_gdt_initialize () {
+int gdt_init () {
 
 	//! set up gdtr
 	_gdtr.m_limit = (sizeof (struct gdt_descriptor) * MAX_DESCRIPTORS)-1;
@@ -126,19 +144,31 @@ int i86_gdt_initialize () {
 	//! set null descriptor
 	gdt_set_descriptor(0, 0, 0, 0, 0);
 
-	//! set default code descriptor
+
+	// set default code descriptor (0x08)
 	gdt_set_descriptor (1,0,0xffffffff,
-		I86_GDT_DESC_READWRITE|I86_GDT_DESC_EXEC_CODE|I86_GDT_DESC_CODEDATA|I86_GDT_DESC_MEMORY,
-		I86_GDT_GRAND_4K | I86_GDT_GRAND_32BIT | I86_GDT_GRAND_LIMITHI_MASK);
+		GDT_DESC_READWRITE|GDT_DESC_EXEC_CODE|GDT_DESC_CODEDATA|GDT_DESC_MEMORY,
+		GDT_GRAND_4K | GDT_GRAND_32BIT | GDT_GRAND_LIMITHI_MASK);
 
-	//! set default data descriptor
+	// set default data descriptor (0x10)
 	gdt_set_descriptor (2,0,0xffffffff,
-		I86_GDT_DESC_READWRITE|I86_GDT_DESC_CODEDATA|I86_GDT_DESC_MEMORY,
-		I86_GDT_GRAND_4K | I86_GDT_GRAND_32BIT | I86_GDT_GRAND_LIMITHI_MASK);
+		GDT_DESC_READWRITE|GDT_DESC_CODEDATA|GDT_DESC_MEMORY,
+		GDT_GRAND_4K | GDT_GRAND_32BIT | GDT_GRAND_LIMITHI_MASK);
 
-	//! install gdtr
-	gdt_install ();
+	// set default user mode code descriptor (0x18)
+	gdt_set_descriptor (3,0,0xffffffff,
+		GDT_DESC_READWRITE|GDT_DESC_EXEC_CODE|GDT_DESC_CODEDATA|GDT_DESC_MEMORY|GDT_DESC_DPL,
+		GDT_GRAND_4K | GDT_GRAND_32BIT | GDT_GRAND_LIMITHI_MASK);
 
+	// set default user mode data descriptor (0x20)
+	gdt_set_descriptor (4,0,0xffffffff,
+		GDT_DESC_READWRITE|GDT_DESC_CODEDATA|GDT_DESC_MEMORY|GDT_DESC_DPL,
+		GDT_GRAND_4K | GDT_GRAND_32BIT | GDT_GRAND_LIMITHI_MASK);
+
+	tss_init(5);
+	load_gdt(); // assembly
+	tss_install(5);
+	
 	return 0;
 }
 

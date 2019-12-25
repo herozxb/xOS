@@ -19,176 +19,79 @@
 #include "DebugDisplay.h"
 #endif
 
-//============================================================================
-//    IMPLEMENTATION PRIVATE DEFINITIONS / ENUMERATIONS / SIMPLE TYPEDEFS
-//============================================================================
-//============================================================================
-//    IMPLEMENTATION PRIVATE CLASS PROTOTYPES / EXTERNAL CLASS REFERENCES
-//============================================================================
-//============================================================================
-//    IMPLEMENTATION PRIVATE STRUCTURES / UTILITY CLASSES
-//============================================================================
+
+struct IDT_entry IDT[MAX_INTERRUPTS];
 
 
-void int_handler_5 () {
- 
-     asm volatile (
-         ".intel_syntax noprefix \n\t"
-         "add esp, 12 \n\t"
-         "pushad \n\t"
-         "popad \n\t"
-         "iretd \n\t"
-         ".att_syntax"
-         );
- /*
-	_asm add esp, 12
-	_asm pushad
- 
-	// do whatever...
- 
-	_asm popad
-	_asm iretd
-	//*/
+unsigned long idt_ptr[2];
+
+
+__attribute__((__cdecl__))
+void default_handler (unsigned int cs, unsigned int eflags, unsigned int eip) {
+	DebugPrintf (" =========================================");
+	for (;;);
 }
 
 
-#ifdef _MSC_VER
-#pragma pack (push, 1)
-#endif
+int install_ir (uint32_t i, uint16_t type_attr, uint16_t selector, uint64_t irq) {
 
-//! describes the structure for the processors idtr register
-struct idtr {
-
-	//! size of the interrupt descriptor table (idt)
-	uint16_t		limit;
-
-	//! base address of idt
-	uint32_t		base;
-};
-
-#ifdef _MSC_VER
-#pragma pack (pop, 1)
-#endif
-
-//============================================================================
-//    IMPLEMENTATION REQUIRED EXTERNAL REFERENCES (AVOID)
-//============================================================================
-//============================================================================
-//    IMPLEMENTATION PRIVATE DATA
-//============================================================================
-
-//! interrupt descriptor table
-static struct idt_descriptor	_idt [I86_MAX_INTERRUPTS];
-
-//! idtr structure used to help define the cpu's idtr register
-static struct idtr				_idtr;
-
-//============================================================================
-//    INTERFACE DATA
-//============================================================================
-//============================================================================
-//    IMPLEMENTATION PRIVATE FUNCTION PROTOTYPES
-//============================================================================
-
-//! installs idtr into processors idtr register
-static void idt_install ();
-
-//! default int handler used to catch unregistered interrupts
-static void i86_default_handler ();
-
-//============================================================================
-//    IMPLEMENTATION PRIVATE FUNCTIONS
-//============================================================================
-
-//! installs idtr into processors idtr register
-static void idt_install () {
-asm volatile("lidt %0": :"m" (_idtr));
-
-DebugPrintf ("\nlimit is [0x%d]",_idtr.limit);
-DebugPrintf ("\nbase  is [0x%d]",_idtr.base);
-
-#ifdef _MSC_VER
-	_asm lidt [_idtr]
-#endif
-}
-
-
-//! default handler to catch unhandled system interrupts.
-static void i86_default_handler () {
-
-	DebugClrScr (0x18);
-	DebugGotoXY (0,0);
-	DebugSetColor (0x1e);
-	DebugPuts ("*** [i86 Hal] i86_default_handler: Unhandled Exception");
-
-#ifdef _DEBUG
-	DebugClrScr (0x18);
-	DebugGotoXY (0,0);
-	DebugSetColor (0x1e);
-	DebugPuts ("*** [i86 Hal] i86_default_handler: Unhandled Exception");
-#endif
-
-
-	for(;;);
-}
-
-//============================================================================
-//    INTERFACE FUNCTIONS
-//============================================================================
-
-//! returns interrupt descriptor
-idt_descriptor* i86_get_ir (uint32_t i) {
-
-	if (i>I86_MAX_INTERRUPTS)
-		return 0;
-
-	return &_idt[i];
-}
-
-
-//! installs a new interrupt handler
-int i86_install_ir (uint32_t i, uint16_t flags, uint16_t sel, I86_IRQ_HANDLER irq) {
-
-	if (i>I86_MAX_INTERRUPTS)
+	if (i > MAX_INTERRUPTS)
 		return 0;
 
 	if (!irq)
 		return 0;
 
-	//! get base address of interrupt handler
-	uint64_t		uiBase = (uint64_t)&(*irq);
+	// get base address of interrupt handler
+	uint64_t base = irq;
 
-	//! store base address into idt
-	_idt[i].baseLo		=	uint16_t(uiBase & 0xffff);
-	_idt[i].baseHi		=	uint16_t((uiBase >> 16) & 0xffff);
-	_idt[i].reserved	=	0;
-	_idt[i].flags		=	uint8_t(flags);
-	_idt[i].sel			=	sel;
+	// store base address into idt
+	IDT[i].offset_lowerbits  = (uint16_t)(base & 0xffff);
+	IDT[i].offset_higherbits = (uint16_t)((base >> 16) & 0xffff);
+	IDT[i].zero              = 0;
+	IDT[i].type_attr         = (uint8_t)(type_attr);
+	IDT[i].selector          = selector;
 
 	return	0;
 }
 
 
-//! initialize idt
-int i86_idt_initialize (uint16_t codeSel) {
+// sets new interrupt vector
+void setvect (int intno, uint64_t vect) {
 
-	//! set up idtr for processor
-	_idtr.limit = sizeof (struct idt_descriptor) * I86_MAX_INTERRUPTS -1;
-	_idtr.base	= (uint32_t)&_idt[0];
+	// install interrupt handler! This overwrites prev interrupt descriptor
+	install_ir (intno, INTERRUPT_GATE, KERNEL_CODE_SEGMENT_OFFSET, vect);
+}
 
-	//! null out the idt
-	memset ((void*)&_idt[0], 0, sizeof (idt_descriptor) * I86_MAX_INTERRUPTS-1);
+void setvect_user (int intno, uint64_t vect) {
+	install_ir (intno, INTERRUPT_GATE | IDT_DESC_RING3,
+		KERNEL_CODE_SEGMENT_OFFSET, vect);
+}
 
-	//! register default handlers
-	for (int i=0; i<I86_MAX_INTERRUPTS; i++)
-		i86_install_ir (i, I86_IDT_DESC_PRESENT | I86_IDT_DESC_BIT32,
-			codeSel, (I86_IRQ_HANDLER)i86_default_handler);
 
-	//! install our idt
-	idt_install ();
+// initialize basic idt
+int idt_init() {
+
+	// null out the idt
+	memset ((void*)&IDT[0], 0, sizeof(struct IDT_entry) * MAX_INTERRUPTS-1);
+
+	// register default handlers
+	for (int i = 0; i < MAX_INTERRUPTS; i++)
+		setvect (i, (unsigned long)default_handler);
+
+	// fill the IDT register
+	unsigned long idt_address = (unsigned long)IDT;
+	idt_ptr[0] = (sizeof(struct IDT_entry) * MAX_INTERRUPTS) + ((idt_address & 0xffff) << 16);
+	idt_ptr[1] = idt_address >> 16;
+
+	load_idt(idt_ptr); // assembly
 
 	return 0;
 }
+
+
+//============================================================================
+//    INTERFACE FUNCTIONS
+//============================================================================
 
 //============================================================================
 //    INTERFACE CLASS BODIES

@@ -34,3 +34,5 @@ ld -o KRNL.SYS  -m elf_i386 -Ttext 0x100000 kernel_entry.o kernel.o DebugDisplay
 # step 6 debug
 objdump -D -b binary -m i386:x86-64 KRNL.SYS
 target remote :1234
+file kernel.elf
+b geninterrupt

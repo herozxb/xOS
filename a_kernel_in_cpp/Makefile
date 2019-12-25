@@ -17,9 +17,14 @@ gdt.o: gdt.cpp
 	gcc -O0 -ffreestanding -m32 -ggdb -c $< -o $@
 idt.o: idt.cpp 
 	gcc -O0 -ffreestanding -m32 -ggdb -c $< -o $@
+tss.o: tss.cpp 
+	gcc -O0 -ffreestanding -m32 -ggdb -c $< -o $@
 	
 kernel_entry.o: kernel_entry.asm
 	nasm $< -f elf -o $@
+
+#geninterrupt.o: geninterrupt.asm
+#	nasm $< -f elf -o $@
 
 KRNL.SYS: kernel.o \
           kernel_entry.o \
@@ -28,7 +33,9 @@ KRNL.SYS: kernel.o \
           Hal.o \
           cpu.o \
           gdt.o \
-          idt.o
+          idt.o \
+          tss.o
+
 	ld -o $@ -m elf_i386 -Ttext 0x100000 $^ --oformat binary
 	
 
@@ -39,7 +46,9 @@ kernel.elf: kernel.o \
           Hal.o \
           cpu.o \
           gdt.o \
-          idt.o
+          idt.o \
+          tss.o
+
 	ld -o $@ -m elf_i386 -Ttext 0x100000 $^ 
 
 run: floppy.img
