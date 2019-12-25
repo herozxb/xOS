@@ -26,9 +26,19 @@ struct IDT_entry IDT[MAX_INTERRUPTS];
 unsigned long idt_ptr[2];
 
 
+//! returns interrupt descriptor
+IDT_entry* i86_get_ir (uint32_t i) {
+
+	if (i>MAX_INTERRUPTS)
+		return 0;
+
+	return &IDT[i];
+}
+
+
 __attribute__((__cdecl__))
 void default_handler (unsigned int cs, unsigned int eflags, unsigned int eip) {
-	DebugPrintf (" =========================================");
+	DebugPrintf (" ===================default_handler======================");
 	for (;;);
 }
 

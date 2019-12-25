@@ -18,6 +18,8 @@
 #include "cpu.h"
 #include "idt.h"
 #include "DebugDisplay.h"
+#include "pic.h"
+#include "pit.h"
 
 //============================================================================
 //    IMPLEMENTATION PRIVATE DEFINITIONS / ENUMERATIONS / SIMPLE TYPEDEFS
@@ -50,7 +52,17 @@
 //! initialize hardware devices
 int hal_initialize () {
 
+
+	//! initialize motherboard controllers and system timer
 	i86_cpu_initialize ();
+	i86_pic_initialize (0x20,0x28);
+	i86_pit_initialize ();
+	i86_pit_start_counter (100,I86_PIT_OCW_COUNTER_0, I86_PIT_OCW_MODE_SQUAREWAVEGEN);
+
+	//! enable interrupts
+	enable ();
+
+
 	return 0;
 }
 
@@ -74,6 +86,96 @@ void geninterrupt(int n){
 			);
 }
 
+
+//! notifies hal interrupt is done
+inline void 	interruptdone (unsigned int intno) {
+
+	//! insure its a valid hardware irq
+	if (intno > 16)
+		return;
+
+	//! test if we need to send end-of-interrupt to second pic
+	if (intno >= 8)
+		i86_pic_send_command (I86_PIC_OCW2_MASK_EOI, 1);
+
+	//! always send end-of-interrupt to primary pic
+	i86_pic_send_command (I86_PIC_OCW2_MASK_EOI, 0);
+}
+
+
+//! output sound to speaker
+void 	sound (unsigned frequency) {
+
+	//! sets frequency for speaker. frequency of 0 disables speaker
+	outportb (0x61, 3 | (unsigned char)(frequency<<2) );
+}
+
+
+//! read byte from device using port mapped io
+unsigned char  inportb (unsigned short portid) {
+	unsigned char result;
+	__asm__ volatile (
+	         ".intel_syntax noprefix \n\t" 
+	         "in al, dx\n\t"
+	         ".att_syntax"
+					 :"=a"(result)
+					 :"d"(portid)
+					 );
+	return result;
+}
+
+
+//! write byte to device through port mapped io
+void  outportb (unsigned short portid, unsigned char value) {
+	__asm__ volatile (
+	         ".intel_syntax noprefix \n\t" 
+	         "out dx, al\n\t"
+	         ".att_syntax"
+					 :
+					 :"a"(value), "d"(portid)
+					 );
+}
+
+
+
+//! sets new interrupt vector
+//void  setvect (int intno, void ( far &vect) ( ) ) {
+
+	//! install interrupt handler! This overwrites prev interrupt descriptor
+//	i86_install_ir (intno, I86_IDT_DESC_PRESENT | I86_IDT_DESC_BIT32,
+//		0x8, vect);
+//}
+
+
+//! returns current interrupt vector
+void ( far * 	getvect (int intno)) ( ) {
+
+	//! get the descriptor from the idt
+	IDT_entry* desc = i86_get_ir (intno);
+	if (!desc)
+		return 0;
+
+	//! get address of interrupt handler
+	uint32_t addr = desc->offset_lowerbits | (desc->offset_higherbits << 16);
+
+	//! return interrupt handler
+	I86_IRQ_HANDLER irq = (I86_IRQ_HANDLER)addr;
+	return irq;
+}
+
+
+//! returns cpu vender
+const char*  get_cpu_vender () {
+
+	return i86_cpu_get_vender();
+}
+
+
+//! returns current tick count (only for demo)
+int  get_tick_count () {
+
+	return i86_pit_get_tick_count();
+}
 
 
 //! generate interrupt call

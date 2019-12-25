@@ -60,8 +60,48 @@ extern	int				hal_shutdown ();
 
 //! generates interrupt
 extern	void			geninterrupt (int n);
-//extern	void			geninterrupt ();
-extern void test();
+
+
+//! notifies hal interrupt is done
+extern	void				interruptdone (unsigned int intno);
+
+//! output sound to speaker
+extern	void				sound (unsigned frequency);
+
+//! read byte from device using port mapped io
+extern	unsigned char	 inportb (unsigned short portid);
+
+//! write byte to device through port mapped io
+extern void				 outportb (unsigned short portid, unsigned char value);
+
+// enable all hardware interrupts
+static inline void enable () {
+	__asm__ volatile (
+	        ".intel_syntax noprefix \n\t"
+	        "sti\n\r"
+	        ".att_syntax");
+}
+
+// disable all hardware interrupts
+static inline void disable () {
+	__asm__ volatile (
+	        ".intel_syntax noprefix \n\t"
+	        "cli\n\r"
+	        ".att_syntax"
+	        :::"memory");
+}
+
+//! sets new interrupt vector
+//extern void				 setvect (int intno, void (_cdecl far &vect) ( ) );
+
+//! returns current interrupt vector
+extern void				( far * 	getvect (int intno)) ( );
+
+//! returns cpu vender
+extern const char*		 get_cpu_vender ();
+
+//! returns current tick count (only for demo)
+extern int				 get_tick_count ();
 
 #ifdef __cplusplus
 }

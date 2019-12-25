@@ -50,6 +50,28 @@
 //    INTERFACE FUNCTIONS
 //============================================================================
 
+
+//! our uber 1337 interrupt handler. handles int 5 request
+//void int_handler_5 () {
+//    DebugPrintf ("interrupt is ok! for 5");
+//}
+ 
+//void geninterrupt(int n){
+//	__asm__ (
+//	    ".intel_syntax noprefix \n\t"
+//			"mov byte ptr [genint+1], al\n\t"
+//			"jmp genint\n"
+//			"genint:\n\t"
+//			"int 0\n\t" // above code modifies the 0 to int number to generate
+//			".att_syntax"
+//			:
+//			:"a"(n)
+//			);
+//}
+
+
+
+
 //! Initializes cpu resources
 int i86_cpu_initialize () {
 	/*
@@ -94,6 +116,8 @@ int i86_cpu_initialize () {
 	//setvect_user (0x81, (unsigned long) sys_pthread_handler);
 	//setvect_user (0x82, (unsigned long) sys_file_handler);
 
+//! generates int 5 instruction. You can also use inline assembly, of course
+  //geninterrupt (5);
 	DebugPrintf("Initialized IDT\n");
 
 
@@ -105,6 +129,25 @@ int i86_cpu_initialize () {
 void i86_cpu_shutdown () {
 
 
+}
+
+
+//! returns vender name of cpu
+char* i86_cpu_get_vender () {
+
+	static char	vender[32] = {0};
+
+#ifdef _MSC_VER
+	_asm {
+		mov		eax, 0
+		cpuid
+		mov		dword ptr [vender], ebx
+		mov		dword ptr [vender+4], edx
+		mov		dword ptr [vender+8], ecx
+	}
+#endif
+
+	return vender;
 }
 
 

@@ -82,6 +82,9 @@ struct IDT_entry {
 
 //extern void int_handler_5();
 
+//! returns interrupt descriptor
+extern IDT_entry* i86_get_ir (uint32_t i);
+
 
 // default handler to catch unhandled system interrupts.
 extern __attribute__((__cdecl__))

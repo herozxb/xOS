@@ -30,8 +30,8 @@ load_gdt_ret:
 
 
 load_idt:
-	mov edx, [ esp + 4 ]
-	lidt [ edx ]        ; load interrupt description table (IDT)
+	mov eax, [ esp + 4 ]
+	lidt [ eax ]        ; load interrupt description table (IDT)
 	sti                 ; turn on interrupts
 	ret
 
@@ -41,12 +41,12 @@ load_idt:
 ;	sti
 ;	iretd               ; 32-bit return
 
-;pit_handler:            ; handle process switching
-;	cli
-;	jmp pit_handler_entry ; DO NOT USE CALL!!! WILL DESTROY STACK
-;pit_handler_entry_ret:
-;	sti
-;	iretd
+pit_handler:            ; handle process switching
+	cli
+	jmp pit_handler_entry ; DO NOT USE CALL!!! WILL DESTROY STACK
+pit_handler_entry_ret:
+	sti
+	iretd
 
 ;sys_interrupt_handler:
 ;	cli
@@ -155,21 +155,21 @@ load_idt:
 ; | fs     |
 ; | gs     |
 ; | ret-add| ; pit_handler_main
-;pit_handler_entry:
-;	pusha ; ax,cx,dx,bx,sp,bp,si,di
-;	push ds
-;	push es
-;	push fs
-;	push gs
+pit_handler_entry:
+	pusha ; ax,cx,dx,bx,sp,bp,si,di
+	push ds
+	push es
+	push fs
+	push gs
 
-;	call pit_handler_main
+	call pit_handler_main
 
-;	pop gs
-;	pop fs
-;	pop es
-;	pop ds
-;	popa
-;	jmp pit_handler_entry_ret
+	pop gs
+	pop fs
+	pop es
+	pop ds
+	popa
+	jmp pit_handler_entry_ret
 
 ;save_proc_entry:
 ;	pusha ; ax,cx,dx,bx,sp,bp,si,di

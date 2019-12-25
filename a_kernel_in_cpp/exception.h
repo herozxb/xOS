@@ -82,7 +82,7 @@ void no_device_fault (unsigned int cs, unsigned int eip, unsigned int eflags) {
 // double fault
 __attribute__((__cdecl__))
 void double_fault_abort (unsigned int cs, unsigned int err, unsigned int eip, unsigned int eflags) {
-	DebugPrintf("Double fault");
+	DebugPrintf("Double fault\n");
 	for (;;);
 }
 

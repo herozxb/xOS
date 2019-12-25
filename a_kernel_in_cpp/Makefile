@@ -19,6 +19,10 @@ idt.o: idt.cpp
 	gcc -O0 -ffreestanding -m32 -ggdb -c $< -o $@
 tss.o: tss.cpp 
 	gcc -O0 -ffreestanding -m32 -ggdb -c $< -o $@
+pic.o: pic.cpp 
+	gcc -O0 -ffreestanding -m32 -ggdb -c $< -o $@
+pit.o: pit.cpp 
+	gcc -O0 -ffreestanding -m32 -ggdb -c $< -o $@
 	
 kernel_entry.o: kernel_entry.asm
 	nasm $< -f elf -o $@
@@ -34,7 +38,9 @@ KRNL.SYS: kernel.o \
           cpu.o \
           gdt.o \
           idt.o \
-          tss.o
+          tss.o \
+          pic.o \
+          pit.o
 
 	ld -o $@ -m elf_i386 -Ttext 0x100000 $^ --oformat binary
 	
@@ -47,7 +53,9 @@ kernel.elf: kernel.o \
           cpu.o \
           gdt.o \
           idt.o \
-          tss.o
+          tss.o \
+          pic.o \
+          pit.o
 
 	ld -o $@ -m elf_i386 -Ttext 0x100000 $^ 
 
