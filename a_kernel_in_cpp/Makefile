@@ -23,6 +23,8 @@ pic.o: pic.cpp
 	gcc -O0 -ffreestanding -m32 -ggdb -c $< -o $@
 pit.o: pit.cpp 
 	gcc -O0 -ffreestanding -m32 -ggdb -c $< -o $@
+mmngr_phys.o: mmngr_phys.cpp 
+	gcc -O0 -ffreestanding -m32 -ggdb -c $< -o $@
 	
 kernel_entry.o: kernel_entry.asm
 	nasm $< -f elf -o $@
@@ -40,7 +42,9 @@ KRNL.SYS: kernel.o \
           idt.o \
           tss.o \
           pic.o \
-          pit.o
+          pit.o \
+          mmngr_phys.o
+       
 
 	ld -o $@ -m elf_i386 -Ttext 0x100000 $^ --oformat binary
 	
@@ -55,7 +59,8 @@ kernel.elf: kernel.o \
           idt.o \
           tss.o \
           pic.o \
-          pit.o
+          pit.o \
+          mmngr_phys.o
 
 	ld -o $@ -m elf_i386 -Ttext 0x100000 $^ 
 

@@ -21,6 +21,7 @@
 
 
 struct IDT_entry IDT[MAX_INTERRUPTS];
+//IDT_entry 64 bits long, 8 bytes long
 
 
 unsigned long idt_ptr[2];
@@ -89,11 +90,23 @@ int idt_init() {
 		setvect (i, (unsigned long)default_handler);
 
 	// fill the IDT register
-	unsigned long idt_address = (unsigned long)IDT;
-	idt_ptr[0] = (sizeof(struct IDT_entry) * MAX_INTERRUPTS) + ((idt_address & 0xffff) << 16);
+	unsigned long idt_address = (unsigned long)IDT; // unsigned long is 64 bits or 8 bytes long
+	idt_ptr[0] = (sizeof(struct IDT_entry) * MAX_INTERRUPTS) + ((idt_address & 0xffff) << 16); //0xffff 16 bits long
 	idt_ptr[1] = idt_address >> 16;
 
 	load_idt(idt_ptr); // assembly
+	
+//	load_idt:
+//	mov eax, [ esp + 4 ] ;esp is 32 bits long, 4 * 32 = 2 * 64 = two long
+//	lidt [ eax ]        ; load interrupt description table (IDT)
+//	sti                 ; turn on interrupts
+//	ret
+
+
+// 1bf:	e8 fc ff ff ff       	call   1c0 <idt_init+0x7e>
+// 1c4:	83 c4 10             	add    $0x10,%esp  ;0x10 = 16 bits esp = 32 bits
+// 1c7:	b8 00 00 00 00       	mov    $0x0,%eax
+
 
 	return 0;
 }
