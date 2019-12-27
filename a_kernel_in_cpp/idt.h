@@ -100,8 +100,9 @@ extern void setvect (int intno, uint64_t vect);
 
 extern void setvect_user (int intno, uint64_t vect);
 
-extern void load_idt(unsigned long *idt_ptr);
+extern void load_idt(unsigned long *idt_ptr);// assembly
 
+extern void keyboard_handler(void);//assembly
 // initialize basic idt
 extern int idt_init();
 

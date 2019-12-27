@@ -1,56 +1,70 @@
-#ifndef _BOOTINFO_H
-#define _BOOTINFO_H
+#ifndef __CTYPE_H
+#define	__CTYPE_H
+
 //****************************************************************************
 //**
-//**    bootinfo.h
+//**    ctype.h
+//**    - character macros
 //**
 //****************************************************************************
 //============================================================================
 //    INTERFACE REQUIRED HEADERS
 //============================================================================
-
-#include <stdint.h>
-
 //============================================================================
 //    INTERFACE DEFINITIONS / ENUMERATIONS / SIMPLE TYPEDEFS
 //============================================================================
+
+#ifdef _MSC_VER
+// Get rid of conversion warnings
+#pragma warning (disable:4244)
+#endif
+
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
+extern char _ctype[];
+
+/* Constants */
+
+#define CT_UP	0x01	/* upper case */
+#define CT_LOW	0x02	/* lower case */
+#define CT_DIG	0x04	/* digit */
+#define CT_CTL	0x08	/* control */
+#define CT_PUN	0x10	/* punctuation */
+#define CT_WHT	0x20	/* white space (space/cr/lf/tab) */
+#define CT_HEX	0x40	/* hex digit */
+#define CT_SP	0x80	/* hard space (0x20) */
+
+/* Basic macros */
+
+#define isalnum(c)	((_ctype + 1)[(unsigned)(c)] & (CT_UP | CT_LOW | CT_DIG))
+#define isalpha(c)	((_ctype + 1)[(unsigned)(c)] & (CT_UP | CT_LOW))
+#define iscntrl(c)	((_ctype + 1)[(unsigned)(c)] & (CT_CTL))
+#define isdigit(c)	((_ctype + 1)[(unsigned)(c)] & (CT_DIG))
+#define isgraph(c)	((_ctype + 1)[(unsigned)(c)] & (CT_PUN | CT_UP | CT_LOW | CT_DIG))
+#define islower(c)	((_ctype + 1)[(unsigned)(c)] & (CT_LOW))
+#define isprint(c)	((_ctype + 1)[(unsigned)(c)] & (CT_PUN | CT_UP | CT_LOW | CT_DIG | CT_SP))
+#define ispunct(c)	((_ctype + 1)[(unsigned)(c)] & (CT_PUN))
+#define isspace(c)	((_ctype + 1)[(unsigned)(c)] & (CT_WHT))
+#define isupper(c)	((_ctype + 1)[(unsigned)(c)] & (CT_UP))
+#define isxdigit(c)	((_ctype + 1)[(unsigned)(c)] & (CT_DIG | CT_HEX))
+#define isascii(c)	((unsigned)(c) <= 0x7F)
+#define toascii(c)	((unsigned)(c) & 0x7F)
+#define tolower(c)	(isupper(c) ? c + 'a' - 'A' : c)
+#define toupper(c)	(islower(c) ? c + 'A' - 'a' : c)
+
+#ifdef __cplusplus
+}
+#endif
+
 //============================================================================
 //    INTERFACE CLASS PROTOTYPES / EXTERNAL CLASS REFERENCES
 //============================================================================
 //============================================================================
 //    INTERFACE STRUCTURES / UTILITY CLASSES
 //============================================================================
-
-//! multiboot info structure passed from boot loader
-
-struct multiboot_info {
-
-	uint32_t	m_flags;
-	uint64_t	m_memorySize;
-	
-//	uint32_t	m_memoryLo;
-//	uint32_t	m_memoryHi;
-	uint32_t	m_bootDevice;
-	uint32_t	m_cmdLine;
-	uint32_t	m_modsCount;
-	uint32_t	m_modsAddr;
-	uint32_t	m_syms0;
-	uint32_t	m_syms1;
-	uint32_t	m_syms2;
-	uint32_t	m_mmap_length;
-	uint32_t	m_mmap_addr;
-	uint32_t	m_drives_length;
-	uint32_t	m_drives_addr;
-	uint32_t	m_config_table;
-	uint32_t	m_bootloader_name;
-	uint32_t	m_apm_table;
-	uint32_t	m_vbe_control_info;
-	uint32_t	m_vbe_mode_info;
-	uint16_t	m_vbe_mode;
-	uint32_t	m_vbe_interface_addr;
-	uint16_t	m_vbe_interface_len;
-};
-
 //============================================================================
 //    INTERFACE DATA DECLARATIONS
 //============================================================================
@@ -65,9 +79,8 @@ struct multiboot_info {
 //============================================================================
 //****************************************************************************
 //**
-//**    END [bootinfo.h]
+//**    END ctype.h
 //**
 //****************************************************************************
 
 #endif
-

@@ -1,10 +1,10 @@
-
-#ifndef _MMNGR_PHYS_H
-#define _MMNGR_PHYS_H
+#ifndef _MMNGR_VIRT_PDE_H
+#define _MMNGR_VIRT_PDE_H
 //****************************************************************************
 //**
-//**    mmngr_phys.cpp
-//**		-Physical Memory Manager
+//**    vmmngr_pde.h
+//**		-Page Directory Entries (PDE). This provides an abstract interface
+//**	to aid in management of PDEs.
 //**
 //****************************************************************************
 //============================================================================
@@ -17,15 +17,32 @@ extern "C"
 {
 #endif
 
+
 #include <stdint.h>
-#include "size_t.h"
+#include "mmngr_phys.h"	//physical_addr
 
 //============================================================================
 //    INTERFACE DEFINITIONS / ENUMERATIONS / SIMPLE TYPEDEFS
 //============================================================================
 
-//! physical address
-typedef	uint32_t physical_addr;
+//! this format is defined by the i86 architecture--be careful if you modify it
+enum PAGE_PDE_FLAGS {
+
+	I86_PDE_PRESENT			=	1,			//0000000000000000000000000000001
+	I86_PDE_WRITABLE		=	2,			//0000000000000000000000000000010
+	I86_PDE_USER			=	4,			//0000000000000000000000000000100
+	I86_PDE_PWT				=	8,			//0000000000000000000000000001000
+	I86_PDE_PCD				=	0x10,		//0000000000000000000000000010000
+	I86_PDE_ACCESSED		=	0x20,		//0000000000000000000000000100000
+	I86_PDE_DIRTY			=	0x40,		//0000000000000000000000001000000
+	I86_PDE_4MB				=	0x80,		//0000000000000000000000010000000
+	I86_PDE_CPU_GLOBAL		=	0x100,		//0000000000000000000000100000000
+	I86_PDE_LV4_GLOBAL		=	0x200,		//0000000000000000000001000000000
+   	I86_PDE_FRAME			=	0x7FFFF000 	//1111111111111111111000000000000
+};
+
+//! a page directery entry
+typedef uint32_t pd_entry;
 
 //============================================================================
 //    INTERFACE CLASS PROTOTYPES / EXTERNAL CLASS REFERENCES
@@ -40,59 +57,33 @@ typedef	uint32_t physical_addr;
 //    INTERFACE FUNCTION PROTOTYPES
 //============================================================================
 
-//! initialize the physical memory manager
-extern	void	pmmngr_init (size_t, physical_addr);
+//! sets a flag in the page table entry
+extern void pd_entry_add_attrib (pd_entry* e, uint32_t attrib);
 
-//! enables a physical memory region for use
-extern	void	pmmngr_init_region (physical_addr, size_t);
+//! clears a flag in the page table entry
+extern void pd_entry_del_attrib (pd_entry* e, uint32_t attrib);
 
-//! disables a physical memory region as in use (unuseable)
-extern	void	pmmngr_deinit_region (physical_addr base, size_t);
+//! sets a frame to page table entry
+extern void pd_entry_set_frame (pd_entry*, physical_addr);
 
-//! allocates a single memory block
-extern	void*	pmmngr_alloc_block ();
+//! test if page is present
+extern bool pd_entry_is_present (pd_entry e);
 
-//! releases a memory block
-extern	void	pmmngr_free_block (void*);
+//! test if directory is user mode
+extern bool pd_entry_is_user (pd_entry);
 
-//! allocates blocks of memory
-extern	void*	pmmngr_alloc_blocks (size_t);
+//! test if directory contains 4mb pages
+extern bool pd_entry_is_4mb (pd_entry);
 
-//! frees blocks of memory
-extern	void	pmmngr_free_blocks (void*, size_t);
+//! test if page is writable
+extern bool pd_entry_is_writable (pd_entry e);
 
-//! returns amount of physical memory the manager is set to use
-extern	size_t pmmngr_get_memory_size ();
+//! get page table entry frame address
+extern physical_addr pd_entry_pfn (pd_entry e);
 
-//! returns number of blocks currently in use
-extern	uint32_t pmmngr_get_use_block_count ();
+//! enable global pages
+extern void pd_entry_enable_global (pd_entry e);
 
-//! returns number of blocks not in use
-extern	uint32_t pmmngr_get_free_block_count ();
-
-//! returns number of memory blocks
-extern	uint32_t pmmngr_get_block_count ();
-
-//! returns default memory block size in bytes
-extern uint32_t pmmngr_get_block_size ();
-
-//! enable or disable paging
-extern	void	pmmngr_paging_enable (bool);
-
-//! test if paging is enabled
-extern	bool	pmmngr_is_paging ();
-
-//! loads the page directory base register (PDBR)
-extern	void	pmmngr_load_PDBR (physical_addr);
-
-//! get PDBR physical address
-extern	physical_addr pmmngr_get_PDBR ();
-
-
-
-#ifdef __cplusplus
-}
-#endif
 //============================================================================
 //    INTERFACE OBJECT CLASS DEFINITIONS
 //============================================================================
@@ -101,8 +92,12 @@ extern	physical_addr pmmngr_get_PDBR ();
 //============================================================================
 //****************************************************************************
 //**
-//**    END [mmngr_phys.h]
+//**    END [vmmngr_pde.h]
 //**
 //****************************************************************************
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

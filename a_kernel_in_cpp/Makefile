@@ -25,6 +25,21 @@ pit.o: pit.cpp
 	gcc -O0 -ffreestanding -m32 -ggdb -c $< -o $@
 mmngr_phys.o: mmngr_phys.cpp 
 	gcc -O0 -ffreestanding -m32 -ggdb -c $< -o $@
+mmngr_virtual.o: mmngr_virtual.cpp 
+	gcc -O0 -ffreestanding -m32 -ggdb -c $< -o $@
+vmmngr_pde.o: vmmngr_pde.cpp 
+	gcc -O0 -ffreestanding -m32 -ggdb -c $< -o $@
+vmmngr_pte.o: vmmngr_pte.cpp
+	gcc -O0 -ffreestanding -m32 -ggdb -c $< -o $@
+kybrd.o: kybrd.cpp
+	gcc -O0 -ffreestanding -m32 -ggdb -c $< -o $@
+stdio.o: stdio.cpp
+	gcc -O0 -ffreestanding -m32 -ggdb -c $< -o $@
+keyboard.o: keyboard.cpp
+	gcc -O0 -ffreestanding -m32 -ggdb -c $< -o $@
+terminal.o: terminal.cpp
+	gcc -O0 -ffreestanding -m32 -ggdb -c $< -o $@
+	
 	
 kernel_entry.o: kernel_entry.asm
 	nasm $< -f elf -o $@
@@ -43,7 +58,14 @@ KRNL.SYS: kernel.o \
           tss.o \
           pic.o \
           pit.o \
-          mmngr_phys.o
+          mmngr_phys.o \
+          mmngr_virtual.o \
+          vmmngr_pde.o \
+          vmmngr_pte.o \
+          kybrd.o \
+          stdio.o \
+          keyboard.o \
+          terminal.o
        
 
 	ld -o $@ -m elf_i386 -Ttext 0x100000 $^ --oformat binary
@@ -60,7 +82,14 @@ kernel.elf: kernel.o \
           tss.o \
           pic.o \
           pit.o \
-          mmngr_phys.o
+          mmngr_phys.o \
+          mmngr_virtual.o \
+          vmmngr_pde.o \
+          vmmngr_pte.o \
+          kybrd.o \
+          stdio.o \
+          keyboard.o \
+          terminal.o
 
 	ld -o $@ -m elf_i386 -Ttext 0x100000 $^ 
 

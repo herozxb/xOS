@@ -48,7 +48,7 @@
 //============================================================================
 //    INTERFACE FUNCTIONS
 //============================================================================
-
+void kb_init(void);
 //! initialize hardware devices
 int hal_initialize () {
 
@@ -59,11 +59,24 @@ int hal_initialize () {
 	i86_pit_initialize ();
 	i86_pit_start_counter (100,I86_PIT_OCW_COUNTER_0, I86_PIT_OCW_MODE_SQUAREWAVEGEN);
 
+	/*
+	 * Keyboard initialization
+	 */
+	kb_init();
+	DebugPrintf("Initialized keyboard\n");
+	
 	//! enable interrupts
 	enable ();
 
 
 	return 0;
+}
+
+
+void kb_init(void)
+{
+	/* populate IDT entry of keyboard's interrupt */
+	setvect(0x21,(unsigned long)keyboard_handler); // keyboard uses 33 interrupt
 }
 
 //! shutdown hardware devices

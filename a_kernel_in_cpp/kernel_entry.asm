@@ -17,7 +17,7 @@ load_gdt_ret:
 
 
 [ global load_idt ]
-;[ global keyboard_handler ]
+[ global keyboard_handler ]
 [ global pit_handler ]
 [ global sys_interrupt_handler ]
 [ global sys_pthread_handler ]
@@ -35,11 +35,11 @@ load_idt:
 	sti                 ; turn on interrupts
 	ret
 
-;keyboard_handler:
-;	cli
-;	call    keyboard_handler_main
-;	sti
-;	iretd               ; 32-bit return
+keyboard_handler:
+	cli
+	call    keyboard_handler_main
+	sti
+	iretd               ; 32-bit return
 
 pit_handler:            ; handle process switching
 	cli

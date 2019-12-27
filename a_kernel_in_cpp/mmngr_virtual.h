@@ -1,31 +1,33 @@
-
-#ifndef _MMNGR_PHYS_H
-#define _MMNGR_PHYS_H
+#ifndef _MMNGR_VIRT_H
+#define _MMNGR_VIRT_H
 //****************************************************************************
 //**
-//**    mmngr_phys.cpp
-//**		-Physical Memory Manager
+//**    mmngr_virtual.h
+//**		-Virtual Memory Manager
 //**
 //****************************************************************************
 //============================================================================
 //    INTERFACE REQUIRED HEADERS
 //============================================================================
 
-#pragma once
-#ifdef __cplusplus
-extern "C"
-{
-#endif
-
 #include <stdint.h>
-#include "size_t.h"
+#include "vmmngr_pte.h"
+#include "vmmngr_pde.h"
 
 //============================================================================
 //    INTERFACE DEFINITIONS / ENUMERATIONS / SIMPLE TYPEDEFS
 //============================================================================
 
-//! physical address
-typedef	uint32_t physical_addr;
+//! virtual address
+typedef uint32_t virtual_addr;
+
+//! i86 architecture defines 1024 entries per table--do not change
+#define PAGES_PER_TABLE 1024
+#define PAGES_PER_DIR	1024
+
+#define PAGE_DIRECTORY_INDEX(x) (((x) >> 22) & 0x3ff)
+#define PAGE_TABLE_INDEX(x) (((x) >> 12) & 0x3ff)
+#define PAGE_GET_PHYSICAL_ADDRESS(x) (*x & ~0xfff)
 
 //============================================================================
 //    INTERFACE CLASS PROTOTYPES / EXTERNAL CLASS REFERENCES
@@ -33,6 +35,19 @@ typedef	uint32_t physical_addr;
 //============================================================================
 //    INTERFACE STRUCTURES / UTILITY CLASSES
 //============================================================================
+
+//! page table
+struct ptable {
+
+	pt_entry m_entries[PAGES_PER_TABLE];
+};
+
+//! page directory
+struct pdirectory {
+
+	pd_entry m_entries[PAGES_PER_DIR];
+};
+
 //============================================================================
 //    INTERFACE DATA DECLARATIONS
 //============================================================================
@@ -40,59 +55,45 @@ typedef	uint32_t physical_addr;
 //    INTERFACE FUNCTION PROTOTYPES
 //============================================================================
 
-//! initialize the physical memory manager
-extern	void	pmmngr_init (size_t, physical_addr);
+//! maps phys to virtual address
+extern void MmMapPage (void* phys, void* virt);
 
-//! enables a physical memory region for use
-extern	void	pmmngr_init_region (physical_addr, size_t);
+//! initialize the memory manager
+extern void vmmngr_initialize ();
 
-//! disables a physical memory region as in use (unuseable)
-extern	void	pmmngr_deinit_region (physical_addr base, size_t);
+//! allocates a page in physical memory
+extern bool vmmngr_alloc_page (pt_entry*);
 
-//! allocates a single memory block
-extern	void*	pmmngr_alloc_block ();
+//! frees a page in physical memory
+extern void vmmngr_free_page (pt_entry* e);
 
-//! releases a memory block
-extern	void	pmmngr_free_block (void*);
+//! switch to a new page directory
+extern bool vmmngr_switch_pdirectory (pdirectory*);
 
-//! allocates blocks of memory
-extern	void*	pmmngr_alloc_blocks (size_t);
+//! get current page directory
+extern pdirectory* vmmngr_get_directory ();
 
-//! frees blocks of memory
-extern	void	pmmngr_free_blocks (void*, size_t);
+//! flushes a cached translation lookaside buffer (TLB) entry
+extern void vmmngr_flush_tlb_entry (virtual_addr addr);
 
-//! returns amount of physical memory the manager is set to use
-extern	size_t pmmngr_get_memory_size ();
+//! clears a page table
+extern void vmmngr_ptable_clear (ptable* p);
 
-//! returns number of blocks currently in use
-extern	uint32_t pmmngr_get_use_block_count ();
+//! convert virtual address to page table index
+extern uint32_t vmmngr_ptable_virt_to_index (virtual_addr addr);
 
-//! returns number of blocks not in use
-extern	uint32_t pmmngr_get_free_block_count ();
+//! get page entry from page table
+extern pt_entry* vmmngr_ptable_lookup_entry (ptable* p,virtual_addr addr);
 
-//! returns number of memory blocks
-extern	uint32_t pmmngr_get_block_count ();
+//! convert virtual address to page directory index
+extern uint32_t vmmngr_pdirectory_virt_to_index (virtual_addr addr);
 
-//! returns default memory block size in bytes
-extern uint32_t pmmngr_get_block_size ();
+//! clears a page directory table
+extern void vmmngr_pdirectory_clear (pdirectory* dir);
 
-//! enable or disable paging
-extern	void	pmmngr_paging_enable (bool);
+//! get directory entry from directory table
+extern pd_entry* vmmngr_pdirectory_lookup_entry (pdirectory* p, virtual_addr addr);
 
-//! test if paging is enabled
-extern	bool	pmmngr_is_paging ();
-
-//! loads the page directory base register (PDBR)
-extern	void	pmmngr_load_PDBR (physical_addr);
-
-//! get PDBR physical address
-extern	physical_addr pmmngr_get_PDBR ();
-
-
-
-#ifdef __cplusplus
-}
-#endif
 //============================================================================
 //    INTERFACE OBJECT CLASS DEFINITIONS
 //============================================================================
@@ -101,7 +102,7 @@ extern	physical_addr pmmngr_get_PDBR ();
 //============================================================================
 //****************************************************************************
 //**
-//**    END [mmngr_phys.h]
+//**    END [mmngr_virtual.h]
 //**
 //****************************************************************************
 

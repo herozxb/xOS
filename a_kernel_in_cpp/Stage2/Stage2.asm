@@ -155,13 +155,26 @@ CopyImage:
    	 mov	ecx, eax
    	 rep	movsd                   ; copy image to its protected mode address
 
+	;---------------------------------------;
+	;   Execute Kernel			;
+	;---------------------------------------;
+
+	jmp	CODE_DESC:IMAGE_PMODE_BASE; jump to our kernel! Note: This assumes Kernel's entry point is at 1 MB
+
+	;---------------------------------------;
+	;   Stop execution			;
+	;---------------------------------------;
+
+	cli
+	hlt
+
 TestImage:
-  	  mov    ebx, [IMAGE_PMODE_BASE+60]
+  	  mov    ebx, 0;[IMAGE_PMODE_BASE+60]
   	  add    ebx, IMAGE_PMODE_BASE    ; ebx now points to file sig (PE00)
   	  mov    esi, ebx
   	  mov    edi, ImageSig
-  	  cmpsw
-  	  je     EXECUTE
+  	  ;cmpsw
+  	  jmp     EXECUTE
   	  mov	ebx, BadImage
   	  call	Puts32
   
