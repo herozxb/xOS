@@ -92,6 +92,11 @@ kernel.elf: kernel.o \
           terminal.o
 
 	ld -o $@ -m elf_i386 -Ttext 0x100000 $^ 
+	
+floppy:
+	sudo mount -o loop floppy.img /media/floppy/
+	sudo cp KRNL.SYS /media/floppy
+	sudo umount /media/floppy
 
 run: floppy.img
 	qemu-system-i386 -fda $<
