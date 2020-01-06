@@ -7,11 +7,11 @@
 #define VIDEO_SIZE 80 * 32 * 2
 
 extern const char* HELLO_INFO ="\
-           _____  _____\n\
+           ____  _____\n\
           / __ \\/ ___/\n\
          / / / /\\__ \\ Happy Search Operating System, xOS \n\
      \\/ / /_/ /___/ / -------------------------------\n\
-     /\\/\\____//____/  \n\n";
+     /\\ \\____//____/  \n\n";
 extern const char* HELP_INFO =
 "xOS Shell version 1.0\n\
 These shell commands are defined internally. Type 'help' to see this list.\n\
