@@ -39,7 +39,8 @@ keyboard.o: keyboard.cpp
 	gcc -O0 -ffreestanding -m32 -ggdb -c $< -o $@
 terminal.o: terminal.cpp
 	gcc -O0 -ffreestanding -m32 -ggdb -c $< -o $@
-	
+flpydsk.o: flpydsk.cpp
+	gcc -O0 -ffreestanding -m32 -ggdb -c $< -o $@	
 	
 kernel_entry.o: kernel_entry.asm
 	nasm $< -f elf -o $@
@@ -65,7 +66,8 @@ KRNL.SYS: kernel.o \
           kybrd.o \
           stdio.o \
           keyboard.o \
-          terminal.o
+          terminal.o \
+          flpydsk.o
        
 
 	ld -o $@ -m elf_i386 -Ttext 0x100000 $^ --oformat binary
@@ -89,21 +91,23 @@ kernel.elf: kernel.o \
           kybrd.o \
           stdio.o \
           keyboard.o \
-          terminal.o
+          terminal.o \
+          flpydsk.o
 
 	ld -o $@ -m elf_i386 -Ttext 0x100000 $^ 
+
+run: floppy.img
+	qemu-system-i386 -fda $<
 	
 floppy:
 	sudo mount -o loop floppy.img /media/floppy/
 	sudo cp KRNL.SYS /media/floppy
 	sudo umount /media/floppy
 
-run: floppy.img
-	qemu-system-i386 -fda $<
 	
 debug: floppy.img kernel.elf
 	qemu-system-i386 -s -fda floppy.img &
-	${GDB} -ex "target remote localhost:1234" -ex "symbol-file kernel.elf"	
+	${GDB} -ex "target remote localhost:1234" -ex "symbol-file kernel.elf" -ex "b flpydsk_set_working_drive"
 	
 .PHONY: clean
 clean:

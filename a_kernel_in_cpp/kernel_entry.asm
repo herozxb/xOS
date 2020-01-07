@@ -22,11 +22,14 @@ load_gdt_ret:
 [ global sys_interrupt_handler ]
 [ global sys_pthread_handler ]
 [ global sys_file_handler ]
+[ global i86_flpy_irq ]
+
 [ extern keyboard_handler_main ]
 [ extern pit_handler_main ]
 [ extern sys_interrupt_handler_main ]
 [ extern sys_pthread_handler_main ]
 [ extern sys_file_handler_main ]
+[ extern i86_flpy_irq_handler_main ]
 
 
 load_idt:
@@ -35,18 +38,49 @@ load_idt:
 	sti                 ; turn on interrupts
 	ret
 
-keyboard_handler:
-	cli
-	call    keyboard_handler_main
-	sti
-	iretd               ; 32-bit return
+i86_flpy_irq:
 
+	add esp, 12
+	pushad
+	cli
+	call    i86_flpy_irq_handler_main
+	sti
+	popad
+	;iretd               ; 32-bit return
+	
 pit_handler:            ; handle process switching
 	cli
 	jmp pit_handler_entry ; DO NOT USE CALL!!! WILL DESTROY STACK
 pit_handler_entry_ret:
 	sti
-	iretd
+	iretd	
+	
+	
+	
+	
+
+;i86_flpy_irq:            ; handle process switching
+;	cli
+;	jmp flpy_handler_entry ; DO NOT USE CALL!!! WILL DESTROY STACK
+;flpy_handler_entry_ret:
+;	sti
+;	iretd
+	
+	
+;i86_flpy_irq:
+	;add esp, 12
+;	cli
+;  pushad
+;	call i86_flpy_irq_handler_main
+	;popa
+	;jmp flpy_handler_entry_ret
+	
+	
+keyboard_handler:
+	cli
+	call    keyboard_handler_main
+	sti
+	iretd               ; 32-bit return
 
 ;sys_interrupt_handler:
 ;	cli
