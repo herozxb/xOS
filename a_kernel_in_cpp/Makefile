@@ -41,6 +41,16 @@ terminal.o: terminal.cpp
 	gcc -O0 -ffreestanding -m32 -ggdb -c $< -o $@
 flpydsk.o: flpydsk.cpp
 	gcc -O0 -ffreestanding -m32 -ggdb -c $< -o $@	
+fat12.o: fat12.cpp
+	gcc -O0 -ffreestanding -m32 -ggdb -c $< -o $@	
+ide.o: ide.cpp
+	gcc -O0 -ffreestanding -m32 -ggdb -c $< -o $@	
+#sysfile.o: sysfile.cpp
+#	gcc -O0 -ffreestanding -m32 -ggdb -c $< -o $@	
+fsys.o: fsys.cpp
+	gcc -O0 -ffreestanding -m32 -ggdb -c $< -o $@	
+ctype.o: ctype.cpp
+	gcc -O0 -ffreestanding -m32 -ggdb -c $< -o $@	
 	
 kernel_entry.o: kernel_entry.asm
 	nasm $< -f elf -o $@
@@ -67,7 +77,11 @@ KRNL.SYS: kernel.o \
           stdio.o \
           keyboard.o \
           terminal.o \
-          flpydsk.o
+          flpydsk.o \
+          fat12.o \
+          ide.o \
+          fsys.o \
+          ctype.o
        
 
 	ld -o $@ -m elf_i386 -Ttext 0x100000 $^ --oformat binary
@@ -92,7 +106,11 @@ kernel.elf: kernel.o \
           stdio.o \
           keyboard.o \
           terminal.o \
-          flpydsk.o
+          flpydsk.o \
+          fat12.o \
+          ide.o \
+          fsys.o \
+          ctype.o
 
 	ld -o $@ -m elf_i386 -Ttext 0x100000 $^ 
 

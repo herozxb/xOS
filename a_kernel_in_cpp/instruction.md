@@ -36,3 +36,9 @@ objdump -D -b binary -m i386:x86-64 KRNL.SYS
 target remote :1234
 file kernel.elf
 b geninterrupt
+
+
+# step 7 gdb
+info frame
+info all-registers
+

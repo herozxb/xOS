@@ -21,6 +21,7 @@
 #include "idt.h"
 #include "DebugDisplay.h"
 #include "exception.h"
+#include "flpydsk.h"
 
 //============================================================================
 //    IMPLEMENTATION PRIVATE DEFINITIONS / ENUMERATIONS / SIMPLE TYPEDEFS
@@ -110,6 +111,7 @@ int i86_cpu_initialize () {
 	setvect (17, (unsigned long) alignment_check_fault);
 	setvect (18, (unsigned long) machine_check_abort);
 	setvect (19, (unsigned long) simd_fpu_fault);
+	setvect (38, (uint64_t)i86_flpy_irq);
 
 	// install my own interrupts
 	//setvect_user (0x80, (unsigned long) sys_interrupt_handler);

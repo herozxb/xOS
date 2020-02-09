@@ -3,15 +3,18 @@
 #include "DebugDisplay.h"
 #include "terminal.h"
 #include "Hal.h"
+#include "fat12.h"
+
+
 #define MAX_TERMINAL 4
 #define VIDEO_SIZE 80 * 32 * 2
 
 extern const char* HELLO_INFO ="\
-           ____  _____\n\
+           _____  _____\n\
           / __ \\/ ___/\n\
          / / / /\\__ \\ Happy Search Operating System, xOS \n\
      \\/ / /_/ /___/ / -------------------------------\n\
-     /\\ \\____//____/  \n\n";
+     /\\/\\____//____/  \n\n";
 extern const char* HELP_INFO =
 "xOS Shell version 1.0\n\
 These shell commands are defined internally. Type 'help' to see this list.\n\
@@ -122,9 +125,10 @@ void terminal_loop()
 			print(HELP_INFO);
 		else if (strcmp(str,"exit") == 0)
 			break;
-		else if (strcmp(str,"clr") == 0)
+		else if (strcmp(str,"clr") == 0){
 		  printf("clear_screen\n");
-			//clear_screen();
+			clear_screen();
+		}
 		else if (strcmp(str,"ls") == 0)
 		  printf("ls\n");
 			//fat12_ls();
@@ -147,8 +151,74 @@ void terminal_loop()
 		} else if (strcmp(str,"tick") == 0)
 			printf("%d\n",get_tick_count());
 		else if (strcmp(str,"read") == 0)
-		  printf("read\n");
+		{
+		  	//printf("read\n");
+
+					//! get pathname
+			//fsysFatInitialize();
+			char path[32];//="file.txt";
+			printf ("\n\rInput example: \"file.txt\", \"a:\\file.txt\", \"a:\\folder\\file.txt\"\n\rFilename> ");
+			getline(path);
+
+			//! open file
+			FILE file = volOpenFile (path);
+			//printf("=====read file 1.0=====\n");
+			//! test for invalid file
+			if (file.flags == FS_INVALID) {
+
+				printf ("\n\rUnable to open file\n");
+				//printf("%x",'E');
+				//'F' 0x46 'I' 0x49 'L' 0x4C 'E' 0x45
+				continue;
+				//return;
+			}
+			//printf("=====read file 1.1=====\n");
+			//! cant display directories
+			if (( file.flags & FS_DIRECTORY ) == FS_DIRECTORY) {
+
+				printf ("\n\rUnable to display contents of directory.");
+				return;
+			}
+			//printf("=====read file 1.2=====\n");
+			//! top line
+			//printf ("-------[%s]-------\n", file.name);
+			//printf ("file.currentCluster number is : %d \n", file.currentCluster);
+			//printf ("file.eof number is : %d \n", file.eof);
+
+
+			//! display file contents
+			while (file.eof != 1) {
+				//printf("=====read file 2.0=====\n");
+				//! read cluster
+				unsigned char buf[512];
+				//printf("=start volReadFile()=\n");
+				volReadFile ( &file, buf, 512);
+				//fsysFatRead( &file, buf, 512);
+				//printf("=before display file=\n");
+			
+				//! display file
+				for (int i=0; i<512; i++)
+				{
+					//printf("#,");
+					printf("%c",buf[i]);
+					//DebugPutc (buf[i]);
+				}
+				printf ("\n------[continue]------\n");
+
+				//! wait for input to continue if not EOF
+				if (file.eof != 1) {
+					printf ("\n\r------[Press a key to continue]------");
+					//getch ();
+					printf ("\r"); //clear last line
+				}
+			}
+
+			//! done :)
+			DebugPrintf ("\n\n\r--------[EOF]--------");
+			
 			//read_disk_test();
+
+		}
 		else if (strcmp(str,"exec") == 0){
 		  printf("exec\n");
 			//exec_user_prg(rest);

@@ -38,15 +38,15 @@ load_idt:
 	sti                 ; turn on interrupts
 	ret
 
-i86_flpy_irq:
+;i86_flpy_irq:
 
-	add esp, 12
-	pushad
-	cli
-	call    i86_flpy_irq_handler_main
-	sti
-	popad
-	;iretd               ; 32-bit return
+;	add esp, 12
+;	pushad
+;	cli
+;	call    i86_flpy_irq_handler_main
+;	sti
+;	popad
+;	iretd               ; 32-bit return
 	
 pit_handler:            ; handle process switching
 	cli
@@ -62,16 +62,16 @@ pit_handler_entry_ret:
 ;i86_flpy_irq:            ; handle process switching
 ;	cli
 ;	jmp flpy_handler_entry ; DO NOT USE CALL!!! WILL DESTROY STACK
-;flpy_handler_entry_ret:
-;	sti
-;	iretd
+flpy_handler_entry_ret:
+	sti
+	iretd
 	
 	
-;i86_flpy_irq:
+i86_flpy_irq:
 	;add esp, 12
-;	cli
-;  pushad
-;	call i86_flpy_irq_handler_main
+	cli
+  pushad
+	call i86_flpy_irq_handler_main
 	;popa
 	;jmp flpy_handler_entry_ret
 	

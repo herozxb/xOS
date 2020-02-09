@@ -42,7 +42,7 @@
 //============================================================================
 
 // global descriptor table is an array of descriptors
-static struct gdt_descriptor	_gdt [MAX_DESCRIPTORS];
+static struct gdt_descriptor	_gdt[MAX_DESCRIPTORS];
 
 // gdtr data
 struct gdtr				_gdtr; // used for assembly

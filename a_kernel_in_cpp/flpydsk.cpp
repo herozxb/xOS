@@ -258,10 +258,10 @@ extern uint8_t flpydsk_read_status () {
 //! write to the fdc dor
 extern void flpydsk_write_dor (uint8_t val ) {
 
-  printf("=============4.3==============\n");
+  //printf("=============4.3==============\n");
 	//! write the digital output register
 	outportb (FLPYDSK_DOR, val);
-	printf("=============4.4==============\n");
+	//printf("=============4.4==============\n");
 }
 
 //! send command byte to fdc
@@ -298,11 +298,11 @@ extern void flpydsk_write_ccr (uint8_t val) {
 //! wait for irq to fire
 extern inline void flpydsk_wait_irq () {
 
-printf("============5.1===============");
+//printf("============5.1===============");
 	//! wait for irq to fire
 	while ( _FloppyDiskIRQ == 0)
 		;
-		printf("============5.2===============");
+		//printf("============5.2===============");
 	_FloppyDiskIRQ = 0;
 }
 
@@ -332,21 +332,19 @@ extern void i86_flpy_irq_handler_main(void)
 
 	//! irq fired
 	_FloppyDiskIRQ = 1;
-	printf("IRQ 6 HIT");
+	//printf("IRQ 6 HIT");
 
 	//! tell hal we are done
 	interruptdone( FLOPPY_IRQ );
-  printf("============5.2===============");
+	//printf("=interruptdone=");
 
-  __asm__ (
-  ".intel_syntax noprefix \n\t"
-  "sti\n\t"
-  "popad\n"
-  //"iretd\n\t"
-  ".att_syntax"
-  );
-  
-  printf("============5.1===============");
+	__asm__ (
+	".intel_syntax noprefix \n\t"
+	"sti\n\t"
+	"popad\n"
+	//"iretd\n\t"
+	".att_syntax"
+	);
 }
 
 /**
