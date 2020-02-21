@@ -4,6 +4,7 @@
 #include "string.h"
 #include "ide.h"
 #include "stdio.h"
+#include "flpydsk.h"
 
 
 static inline void enable () {
@@ -46,6 +47,7 @@ void waitdisk(void) {
 }
 
 /* readsect - read a single sector at @secno into @dst */
+/*
 void readsect(uintptr_t dst, uint32_t secno) {
   //printf("===========6.2.2.0============");
 
@@ -65,18 +67,25 @@ void readsect(uintptr_t dst, uint32_t secno) {
     insw(0x1F0, dst, SECTSIZE / 2);
       //printf("===========6.2.2.4============");
 }
+*/
+
+void readsect(uintptr_t dst, uint32_t secno) {
+	//printf("===========readsect()============");
+	dst =(uintptr_t) flpydsk_read_sector(secno);
+}
+
 
 // read [@startsec,@startsec+@cnt] sectors to @addr
 void read_sectors(uintptr_t addr, uint32_t startsec, uint32_t cnt)
 {
-	printf("===========6.2============");
+	//printf("===========read_sectors()============");
 	for (int i = 0; i < cnt; i++){
-		printf("===========6.2.1============");
+		//printf("===========6.2.1============");
 		readsect(TMP_USER_ADDR + i * SECTSIZE, startsec + i);
-		printf("%d\n",i);
+		//printf("%d\n",i);
 		memcpy((void*)addr, (const void*)TMP_USER_ADDR, cnt * SECTSIZE);
 	}
-		printf("===========6.2.2============");
+		//printf("===========6.2.2============");
 }
 
 void writesect(uintptr_t src, uint32_t secno) {
@@ -112,7 +121,7 @@ void show_one_sector(uintptr_t addr)
 	int i = 0;
 	for (int c = 0; c < 4; c++ ) {
 		for (int j = 0; j < 128; j++){
-			printf ("%x", sector[ i + j ]);
+			printf ("%c", sector[ i + j ]);
 			if (j % 2 == 1)
 				printf(" ");
 		}

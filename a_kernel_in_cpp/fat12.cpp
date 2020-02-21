@@ -1,473 +1,568 @@
-/******************************************************************************
-   fat12.cpp
-		-FAT12 Minidriver
-
-   arthor\ Mike
-******************************************************************************/
-
-#include "DebugDisplay.h"
-#include "fat12.h"
-#include "string.h"
-#include "flpydsk.h"
-#include "bpb.h"
-#include "ctype.h"
+#include "ide.h"
 #include "stdio.h"
+#include <stdint.h>
+#include "fat12.h"
+#include "Hal.h"
 
-//! bytes per sector
-#define SECTOR_SIZE 512
+/*
+ * FAT12
+ *
+ * 2 * 18 * 80 = 2880 sectors
+ *
+ * LogSec | NumSec   | Context
+ * 0      | 1 (512)  | BootSec
+ * 1      | 9 (4608) | FAT1
+ * 10     | 9 (4608) | FAT2
+ * 19     | 14 (9728)| root
+ * 33     | 14 (9828)| data
+ *
+ * Reference:
+ * MinirighiOS, http://minirighi.sourceforge.net/html/fat_8h-source.html
+ * FAT12, https://github.com/imtypist/fat12
+ */
 
-//! FAT FileSystem
-FILESYSTEM _FSysFat;
+#define FAT_SECTOR_SIZE 512
+#define FAT_BOOTSECTOR_SIZE 1
+#define FAT_PHYS_SIZE 9
+#define FAT_ROOT_SIZE 14
+#define FAT_NUM_ROOT_ENTRY 224
+#define FAT_NUM_DIR_ENTRY 16
+#define FAT_NUM_ENTRY 3072
 
-//! Mount info
-MOUNT_INFO _MountInfo;
+#define FAT_BOOTSECTOR_START 0
+#define FAT_ENTRY_START 1
+#define FAT_ROOT_REGION_START 19
+#define FAT_DATA_REGION_START 33
 
-//! File Allocation Table (FAT)
-uint8_t FAT [SECTOR_SIZE*2];
+#define FAT_ATTR_READ_ONLY 0x01
+#define FAT_ATTR_HIDDEN 0x02
+#define FAT_ATTR_SYSTEM 0x04
+#define FAT_ATTR_VOLUME_ID 0x08
+#define FAT_ATTR_SUBDIRECTORY 0x10
+#define FAT_ATTR_ARCHIVE 0x20
+#define FAT_ATTR_DEVICE 0x40
+#define FAT_ATTR_UNUSED 0x80
 
-/**
-*	Helper function. Converts filename to DOS 8.3 file format
-*/
-void ToDosFileName (const char* filename,
-            char* fname,
-            unsigned int FNameLength) {
+#define EOF_FAT12	   0xFF8
 
-	unsigned int  i=0;
+char curr_path[50];
+int curr_dir;
 
-	if (FNameLength > 11)
-		return;
+void set_curr_dir(int dir)
+{
+	curr_dir = dir;
+}
 
-	if (!fname || !filename)
-		return;
+int get_curr_dir()
+{
+	return curr_dir;
+}
 
-	//! set all characters in output name to spaces
-	memset (fname, ' ', FNameLength);
+void set_curr_path(char* path)
+{
+	strcpy(curr_path,path);
+}
 
-	//! 8.3 filename
-	for (i=0; i < strlen(filename)-1 && i < FNameLength; i++) {
+void get_curr_path(char* new_path)
+{
+	strcpy(new_path,curr_path);
+}
 
-		if (filename[i] == '.' || i==8 )
+static fat_subdir_t subdir;
+
+// bool Read_FAT();
+// bool load_file(char *stringa, uint8_t *buffer);
+// int get_file_size(char *file_name);
+// char *pwd();
+// void ls();
+// bool cd(char *new_path);
+// bool cat(char *stringa);
+// bool rm(char *filename);
+
+bool fat12_init()
+{
+	// Boot sector
+	read_sectors((uintptr_t)&bootsector,FAT_BOOTSECTOR_START,FAT_BOOTSECTOR_SIZE);
+
+
+	printf("\nInitializing FileSystem...\n");
+	printf("\n");
+	printf("Jump:%02x %02x %02x\n", bootsector.Jump[0], bootsector.Jump[1], bootsector.Jump[2]);
+	printf("OS Name:%s\n", bootsector.BS_OEMName);
+	printf("BytesPerSector:%d\n", bootsector.BPB_BytesPerSector);
+	printf("SectorsPerCluster:%d\n", bootsector.BPB_SectorsPerCluster);
+	printf("ReservedSectors:%d\n", bootsector.BPB_ReservedSectors);
+	printf("NumFATs:%d\n", bootsector.BPB_NumFATs);
+	printf("RootDirectoryEntries:%d\n", bootsector.BPB_RootDirectoryEntries);
+	printf("LogicalSectors:%d\n", bootsector.BPB_LogicalSectors);
+	printf("MediumDescriptorByte:%X\n", bootsector.BPB_MediumDescriptorByte);
+	printf("SectorsPerFat:%d\n", bootsector.BPB_SectorsPerFat);
+	printf("SectorsPerTrack:%d\n", bootsector.BPB_SectorsPerTrack);
+	printf("Heads:%d\n", bootsector.BPB_NumHeads);
+	printf("HiddenSectors:%d\n", bootsector.BPB_HiddenSectors);
+	printf("\n");
+
+
+	// FAT sectors
+	read_sectors((uintptr_t)&phys_fat,FAT_ENTRY_START,FAT_PHYS_SIZE);
+
+	// Converts the FAT into the logical structures (array of word).
+	for (int i = 0, j = 0; i < 4608; i += 3)
+	{
+		fat.entry[ j++ ] = (phys_fat.entry[i] + (phys_fat.entry[i+1] << 8)) & 0x0FFF;
+		fat.entry[ j++ ] = (phys_fat.entry[i+1] + (phys_fat.entry[i+2] << 8)) >> 4;
+	}
+
+	// root directory
+	read_sectors((uintptr_t)&root_dir,FAT_ROOT_REGION_START,FAT_ROOT_SIZE);
+
+/*
+	printf("\nInitializing FileSystem...\n");
+	printf("\n");
+	printf("name:%c\n", root_dir.entry[0].name[0]);
+	printf("extension:%c\n", root_dir.entry[0].extension[0]);
+	printf("root_dir:%s\n", root_dir.entry[0].reserved);
+	printf("time:%d\n", root_dir.entry[0].time);
+	printf("date:%d\n", root_dir.entry[0].date);
+	printf("startCluster:%d\n", root_dir.entry[0].startCluster);
+	printf("fileLength:%d\n", root_dir.entry[0].fileLength);
+
+	printf("\n");
+//*/
+	// set current path
+	curr_dir = FAT_ROOT_REGION_START;
+	strcpy(curr_path,"/");
+
+	return true;
+}
+
+void int_to_date(fat_date_t* d, uint16_t date)
+{
+	d->year  = date / 512;
+	d->month = (date - (d->year * 512)) / 32;
+	d->day   = date - (d->year * 512) - (d->month * 32);
+}
+
+void int_to_time(fat_time_t* time, uint16_t t)
+{
+	time->hour   = t / 2048;
+	time->minute = (t - (time->hour * 2048)) / 32;
+	time->second = (t - (time->hour * 2048) - (time->minute * 32)) * 2;
+}
+
+int date_to_int(int year, int month, int day)
+{
+	return (((year-1980) << 9) + (month << 5) + day);
+}
+
+int time_to_int(int hour, int minute, int second)
+{
+	return ((hour << 11) + (minute << 5) + second / 2);
+}
+
+char* fat12_construct_file_name(char* name, FileEntry_t *f)
+{
+	memset(name,0,13*sizeof(char));
+	for (int i = 0; i < 8; i++)
+		if (f->name[i] == ' ') {
+			name[i] = '\0';
 			break;
+		} else
+			name[i] = f->name[i];
 
-		//! capitalize character and copy it over (we dont handle LFN format)
-		fname[i] = toupper (filename[i] );
-	}
-
-	//! add extension if needed
-	if (filename[i]=='.') {
-
-		//! note: cant just copy over-extension might not be 3 chars
-		for (int k=0; k<3; k++) {
-
-			++i;
-			if ( filename[i] )
-				fname[8+k] = filename[i];
-		}
-	}
-
-	//! extension must be uppercase (we dont handle LFNs)
-	for (i = 0; i < 3; i++)
-		fname[8+i] = toupper (fname[8+i]);
-}
-
-/**
-*	Locates file or directory in root directory
-*/
-FILE fsysFatDirectory (const char* DirectoryName) {
-
-	FILE file;
-	unsigned char* buf;
-	PDIRECTORY directory;
-
-	//! get 8.3 directory name
-	char DosFileName[11];
-	ToDosFileName (DirectoryName, DosFileName, 11);
-	DosFileName[11]=0;
-	//printf("=DosFileName = %c%c%c%c%c%c%c%c%c%c%c=", DosFileName[0],DosFileName[1],DosFileName[2],DosFileName[3],DosFileName[4],DosFileName[5],DosFileName[6],DosFileName[7],DosFileName[8],DosFileName[9],DosFileName[10]);
-
-	//! 14 sectors per directory
-	for (int sector=0; sector<14; sector++) {
-
-		//printf("=key sector is %d=",_MountInfo.rootOffset + sector + 10);
-		//! read in sector of root directory
-		//printf("=_MountInfo.rootOffset = %d=",_MountInfo.rootOffset);
-		buf = (unsigned char*) flpydsk_read_sector (_MountInfo.rootOffset + sector +10 );
-
-		//! get directory info
-		directory = (PDIRECTORY) buf;
-		//! 16 entries per sector
-		for (int i=0; i<16; i++) {
-
-			//printf("DosFileName1[0] = [%c]",DosFileName1[0]);
-
-			//! get current filename
-			char name[12];
-			memcpy (name, directory->Filename, 11);
-			name[11]=0;
-			
-			//printf("DosFileName1[0] = [%c]",DosFileName1[0]);
-			//printf("=DosFileName3 =[%c%c%c%c%c%c%c%c%c%c%c]\n", DosFileName1[0],DosFileName1[1],DosFileName1[2],DosFileName1[3],DosFileName1[4],DosFileName1[5],DosFileName1[6],DosFileName1[7],DosFileName1[8],DosFileName1[9],DosFileName1[10]);
-			//if(name[0]!=NULL)
-			//{
-			//	printf("=key name =[%c%c%c%c%c%c%c%c%c%c%c]\n", name[0],name[1],name[2],name[3],name[4],name[5],name[6],name[7],name[8],name[9],name[10]);
-			//	printf("compare result is %d",strcmp (DosFileName, name));
-			
-			//}
-			//! find a match?
-			if (strcmp (DosFileName, name) == 0) {
-
-				//! found it, set up file info
-				//printf("=found it %d=",directory->FirstCluster);
-
-				strcpy (file.name, DirectoryName);
-				file.id             = 0;
-				file.currentCluster = directory->FirstCluster;
-				file.fileLength     = directory->FileSize;
-				file.eof            = 0;
-				file.fileLength     = directory->FileSize;
-
-				//! set file type
-				if (directory->Attrib == 0x10)
-					file.flags = FS_DIRECTORY;
-				else
-					file.flags = FS_FILE;
-
-				//! return file
-				return file;
-			}
-
-			//! go to next directory
-			directory++;
-		}
-	}
-
-	//! unable to find file
-	file.flags = FS_INVALID;
-	return file;
-}
-
-/**
-*	Reads from a file
-*/
-void fsysFatRead(PFILE file, unsigned char* Buffer, unsigned int Length) {
-
-  	//printf("=====read file 2.1.0=====\n");
-	if (file) {
-    	//printf("=start in the fsysFatRead()=\n");
-		//! starting physical sector
-		unsigned int physSector = 32 + (file->currentCluster - 1);
-		//printf("=before flpydsk_read_sector() physSector = %d\n",physSector);
-		//! read in sector
-		unsigned char* sector = (unsigned char*) flpydsk_read_sector ( physSector );
-
-		//! copy block of memory
-		memcpy (Buffer, sector, 512);
-		
-		/*
-					  //! display sector
-	  if (sector!=0) {
-
-		  int i = 0;
-		  for ( int c = 0; c < 1; c++ ) {
-
-			  for (int j = 0; j < 128; j++)
-				  printf ("0x%x ", sector[ i + j ]);
-			  i += 128;
-
-			  printf("\n\rPress any key to continue\n\r");
-		  }
-	  }
-	  else
-		  printf ("\n\r*** Error reading sector from disk");
-		
-		
-		//*/
-		
-    //printf("=====read file 2.1.1.0=====\n");
-		//! locate FAT sector
-		unsigned int FAT_Offset = file->currentCluster + (file->currentCluster / 2); //multiply by 1.5
-		unsigned int FAT_Sector = 1 + (FAT_Offset / SECTOR_SIZE);
-		unsigned int entryOffset = FAT_Offset % SECTOR_SIZE;
-    	//printf("=start flpydsk_read_sector()=");
-		//! read 1st FAT sector
-		sector = (unsigned char*) flpydsk_read_sector ( FAT_Sector );
-		memcpy (FAT, sector, 512);
-		
-	/*
-			  //! display sector
-	  if (sector!=0) {
-
-		  int i = 0;
-		  for ( int c = 0; c < 1; c++ ) {
-
-			  for (int j = 0; j < 128; j++)
-				  printf ("0x%x ", sector[ i + j ]);
-			  i += 128;
-
-			  printf("\n\rPress any key to continue\n\r");
-		  }
-	  }
-	  else
-		  printf ("\n\r*** Error reading sector from disk");
-//*/		
-		
-    //printf("=====read file 2.1.1.2=====\n");
-		//! read 2nd FAT sector
-		sector = (unsigned char*) flpydsk_read_sector ( FAT_Sector + 1 );
-		memcpy (FAT + SECTOR_SIZE, sector, 512);
-		
-		/*
-			  //! display sector
-	  if (sector!=0) {
-
-		  int i = 0;
-		  for ( int c = 0; c < 1; c++ ) {
-
-			  for (int j = 0; j < 128; j++)
-				  printf ("0x%x ", sector[ i + j ]);
-			  i += 128;
-
-			  printf("\n\rPress any key to continue\n\r");
-		  }
-	  }
-	  else
-		  printf ("\n\r*** Error reading sector from disk");
-		//*/
-		
-    //printf("=====read file 2.1.1.3=====\n");
-		//! read entry for next cluster
-		uint16_t nextCluster = *( uint16_t*) &FAT [entryOffset];
-
-    //printf("=====read file 2.1.2=====\n");
-		//! test if entry is odd or even
-		if( file->currentCluster & 0x0001 )
-			nextCluster >>= 4;      //grab high 12 bits
-		else
-			nextCluster &= 0x0FFF;   //grab low 12 bits
-
-    	//printf("=====read file 2.1.2.0=====\n");
-		//! test for end of file
-		if ( nextCluster >= 0xff8) {
-
-			file->eof = 1;
-			//printf("=test for end of file=\n");
-			return;
-		}
-    	//printf("=====read file 2.1.2.2=====\n");
-		//! test for file corruption
-		if ( nextCluster == 0 ) {
-
-			file->eof = 1;
-			//printf("=====read file 2.1.2.3=====\n");
-			return;
-		}
-   		 //printf("=====read file 2.1.3=====\n");
-		//! set next cluster
-		file->currentCluster = nextCluster;
-		//printf("=====read file 2.1.4 end=====\n");
-	}
-}
-
-/**
-*	Closes file
-*/
-void fsysFatClose (PFILE file) {
-
-	if (file)
-		file->flags = FS_INVALID;
-}
-
-/**
-*	Locates a file or folder in subdirectory
-*/
-FILE fsysFatOpenSubDir (FILE kFile,
-						const char* filename) {
-
-	FILE file;
-
-	//! get 8.3 directory name
-	char DosFileName[11];
-	ToDosFileName (filename, DosFileName, 11);
-	DosFileName[11]=0;
-
-	//! read directory
-	while (! kFile.eof ) {
-
-		//! read directory
-		unsigned char buf[512];
-		fsysFatRead (&file, buf, 512);
-
-		//! set directort
-		PDIRECTORY pkDir = (PDIRECTORY) buf;
-
-		//! 16 entries in buffer
-		for (unsigned int i = 0; i < 16; i++) {
-
-			//! get current filename
-			char name[11];
-			memcpy (name, pkDir->Filename, 11);
-			name[11]=0;
-
-			//! match?
-			if (strcmp (name, DosFileName) == 0) {
-
-				//! found it, set up file info
-				strcpy (file.name, filename);
-				file.id             = 0;
-				file.currentCluster = pkDir->FirstCluster;
-				file.fileLength     = pkDir->FileSize;
-				file.eof            = 0;
-				file.fileLength     = pkDir->FileSize;
-
-				//! set file type
-				if (pkDir->Attrib == 0x10)
-					file.flags = FS_DIRECTORY;
-				else
-					file.flags = FS_FILE;
-
-				//! return file
-				return file;
-			}
-
-			//! go to next entry
-			pkDir++;
-		}
-	}
-
-	//! unable to find file
-	file.flags = FS_INVALID;
-	return file;
-}
-
-/**
-*	Opens a file
-*/
-FILE fsysFatOpen (const char* FileName) {
-
-	FILE curDirectory;
-	char* p = 0;
-	bool rootDir=true;
-	char* path = (char*) FileName;
-	//printf("=in the fsysFatOpen()=");
-	//! any '\'s in path?
-	p = strchr (path, '\\');
-
-	if (!p) {
-
-		//! nope, must be in root directory, search it
-		curDirectory = fsysFatDirectory (path);
-		//printf("=in the curDirectory=");
-		//printf("=curDirectory.flags %d=",curDirectory.flags);
-		//printf("=curDirectory.deviceID %c=",curDirectory.deviceID);
-		//! found file?
-		if (curDirectory.flags == FS_FILE)
-		{
-			//printf("=curDirectory.name = %c=",curDirectory.name[5]);
-			//printf("=curDirectory.fileLength = %d=",curDirectory.fileLength);
-			//printf("=curDirectory.currentCluster = %d=",curDirectory.currentCluster);
-			return curDirectory;
-		}
-
-			
-
-		//! unable to find
-		FILE ret;
-		ret.flags = FS_INVALID;
-		return ret;
-	}
-
-	//! go to next character after first '\'
-	p++;
-
-	while ( p ) {
-
-		//! get pathname
-		char pathname[16];
-		int i=0;
-		for (i=0; i<16; i++) {
-
-			//! if another '\' or end of line is reached, we are done
-			if (p[i]=='\\' || p[i]=='\0')
+	if (f->extension[0] != ' ') {
+		strcat(name, ".");
+		int k = strlen(name);
+		for (int i = 0; i < 3; i++)
+			if (f->extension[i] == ' ') {
+				name[i + k] = '\0';
 				break;
+			} else
+				name[i + k] = f->extension[i];
+	}
+	name[12] = '\0';
+	tolower(name);
+	return name;
+}
 
-			//! copy character
-			pathname[i]=p[i];
-		}
-		pathname[i]=0; //null terminate
+bool fat12_next_sector(uint32_t* next, uint32_t actual)
+{
+	*next = fat.entry[actual];
+	if ((*next == 0) || (*next >= 0x0FF0))
+		return false;
+	else
+		return true;
+}
 
-		//! open subdirectory or file
-		if (rootDir) {
+int fat12_read_bytes(char* buf, uint32_t cstart, uint32_t numBytes)
+{
 
-			//! search root directory - open pathname
-			curDirectory = fsysFatDirectory (pathname);
-			rootDir=false;
-		}
-		else {
-
-			//! search a subdirectory instead for pathname
-			curDirectory = fsysFatOpenSubDir (curDirectory, pathname);
-		}
-
-		//! found directory or file?
-		if (curDirectory.flags == FS_INVALID)
+	int i;
+	uint32_t clust = cstart;
+	uint32_t n = numBytes % FAT_SECTOR_SIZE == 0
+				? numBytes / FAT_SECTOR_SIZE
+				: numBytes / FAT_SECTOR_SIZE + 1;
+	for (i = 0; true; ++i)
+	{
+#ifdef DEBUG
+		printf("Read cluster: %d\n", clust);
+#endif
+		uintptr_t addr = (uintptr_t) buf + i * FAT_SECTOR_SIZE;
+		// remember to recalculate cstart
+		read_sectors(addr, clust + FAT_DATA_REGION_START - 2, 1);
+		enable();
+		if (fat12_next_sector(&clust, clust) == false || i+1 > n)
 			break;
+	}
+	return i;
+}
 
-		//! found file?
-		if (curDirectory.flags == FS_FILE)
-			return curDirectory;
+// start from the @cstart-th cluster, read the whole file to @buf
+// return the number of bytes read
+int fat12_read_clusters(char* buf, uint32_t cstart)
+{
 
-		//! find next '\'
-		p=strchr (p+1, '\\');
-		if (p)
-			p++;
+	int i;
+	uint32_t clust = cstart;
+	for (i = 0; true; ++i)
+	{
+#ifdef DEBUG
+		printf("Read cluster: %d\n", clust);
+#endif
+		uintptr_t addr = (uintptr_t) buf + i * FAT_SECTOR_SIZE;
+		// remember to recalculate cstart
+		read_sectors(addr, clust + FAT_DATA_REGION_START - 2, 1);
+		enable();
+		if (fat12_next_sector(&clust, clust) == false)
+			break;
+	}
+	return i;
+}
+
+int fat12_write_bytes(char* buf, uint32_t cstart, uint32_t numBytes)
+{
+
+	int i;
+	uint32_t clust = cstart;
+	uint32_t n = numBytes % FAT_SECTOR_SIZE == 0
+				? numBytes / FAT_SECTOR_SIZE 
+				: numBytes / FAT_SECTOR_SIZE + 1;
+	for (i = 0; true; ++i)
+	{
+#ifdef DEBUG
+		printf("Write cluster: %d\n", clust);
+#endif
+		uintptr_t addr = (uintptr_t) buf + i * FAT_SECTOR_SIZE;
+		// remember to recalculate cstart
+		write_sectors(addr, clust + FAT_DATA_REGION_START - 2, 1);
+		enable();
+		if (fat12_next_sector(&clust, clust) == false || i+1 > n)
+			break;
+	}
+	return i;
+}
+
+int fat12_write_clusters(char* buf, uint32_t cstart)
+{
+
+	int i;
+	uint32_t clust = cstart;
+	for (i = 0; true; ++i)
+	{
+#ifdef DEBUG
+		printf("Write cluster: %d\n", clust);
+#endif
+		uintptr_t addr = (uintptr_t) buf + i * FAT_SECTOR_SIZE;
+		// remember to recalculate cstart
+		write_sectors(addr, clust + FAT_DATA_REGION_START - 2, 1);
+		enable();
+		if (fat12_next_sector(&clust, clust) == false)
+			break;
+	}
+	return i;
+}
+
+void fat12_write_back_fat()
+{
+	int i, j;
+
+	// Converts the FAT from the logical structure into physical structure
+	for(i = 0, j = 0; j < 3072; j += 2)
+	{
+		phys_fat.entry[i++] = (uint8_t)fat.entry[j];
+		phys_fat.entry[i++] = (uint8_t)((fat.entry[j]>>8)&(0x0F))|
+									((fat.entry[j+1]<<4)&(0xF0));
+		phys_fat.entry[i++] = (uint8_t)(fat.entry[j+1]>>4);
 	}
 
-	//! unable to find
-	FILE ret;
-	ret.flags = FS_INVALID;
-	return ret;
+	// Copy FAT to the disk
+	// write_sectors((uintptr_t)&fat, FAT_ENTRY_START, bootsector.BPB_NumFATs);
 }
 
-/**
-*	Mounts the filesystem
-*/
-void fsysFatMount () {
-
-	//! Boot sector info
-	PBOOTSECTOR bootsector;
-
-	//! read boot sector
-	bootsector = (PBOOTSECTOR) flpydsk_read_sector (0);
-
-	//! store mount info
-	_MountInfo.numSectors     = bootsector->Bpb.NumSectors;
-	//printf("bootsector->Bpb.NumSectors = %d\n",bootsector->Bpb.NumSectors);
-	_MountInfo.fatOffset      = 1;
-	_MountInfo.fatSize        = bootsector->Bpb.SectorsPerFat;
-	//printf("bootsector->Bpb.SectorsPerFat = %d\n",bootsector->Bpb.SectorsPerFat);
-	_MountInfo.fatEntrySize   = 8;
-	_MountInfo.numRootEntries = bootsector->Bpb.NumDirEntries;
-	_MountInfo.rootOffset     = (bootsector->Bpb.NumberOfFats * bootsector->Bpb.SectorsPerFat) + 1;
-	_MountInfo.rootSize       = ( bootsector->Bpb.NumDirEntries * 32 ) / bootsector->Bpb.BytesPerSector;
+void fat12_del_fat_entry(uint32_t cstart)
+{
+	uint32_t clust = cstart, new_clust;
+	for (int i = 0; true; ++i)
+	{
+#ifdef DEBUG
+		printf("Del cluster: %d\n", clust);
+#endif
+		bool flag = fat12_next_sector(&new_clust, clust);
+		memset((void*)fat.entry[clust],0,sizeof(fat.entry[clust]));
+		clust = new_clust;
+		if (!flag)
+			break;
+	}
+	fat12_write_back_fat();
 }
 
-/**
-*	Initialize filesystem
-*/
-void fsysFatInitialize () {
+bool fat12_read_file(char* filename, char* addr, int* size)
+{
+#ifdef DEBUG
+	printf("%s\n", filename);
+#endif
+	for (int i = 0; i < FAT_NUM_ROOT_ENTRY; ++i){
+		char entry_name[13]; // with dot(.)!
+		fat12_construct_file_name(entry_name,&root_dir.entry[i]);
+		if (strcmp(filename,entry_name) != 0)
+			continue;
+		fat12_read_clusters(addr,root_dir.entry[i].startCluster);
+		if (size != NULL)
+			*size = root_dir.entry[i].fileLength;
+		return true;
+	}
 
-	//! initialize filesystem struct
-	strcpy (_FSysFat.Name, "FAT12");
-	_FSysFat.Directory = fsysFatDirectory;
-	_FSysFat.Mount     = fsysFatMount;
-	_FSysFat.Open      = fsysFatOpen;
-	_FSysFat.Read      = fsysFatRead;
-	_FSysFat.Close     = fsysFatClose;
+	put_error("FAT No this file!");
 
-	//! register ourself to volume manager
-	volRegisterFileSystem ( &_FSysFat, 0 );
-
-	//! mounr filesystem
-	fsysFatMount ();
-	//printf("File system init\n");
+	return false;
 }
+
+ void fat12_show_file_attrib(fat12_file_attr_t attr)
+{
+	if (attr.label)
+	{
+		printf("<label> ");
+		return;
+	}
+	printf("%c", attr.directory	? 'd' : '-');
+	printf("%c", attr.read_only	? 'r' : '-');
+	printf("%c", attr.hidden	? 'h' : '-');
+	printf("%c", attr.system	? 's' : '-');
+	printf("%c", attr.archive	? 'a' : '-');
+}
+
+int fat12_get_num_cluster(uint32_t start)
+{
+	uint32_t c = 1, cl;
+
+	// The root directory (start=0) has a fixed size.
+	if (!start)
+	{
+		return ((bootsector.BPB_RootDirectoryEntries * sizeof(FileEntry_t))
+			/ FAT_SECTOR_SIZE);
+	}
+
+	// Calculate the size of the directory... it's not the root!
+	cl = start;
+	while (fat12_next_sector(&cl, cl))
+		c++;
+
+	return c;
+}
+
+bool fat12_show_file_entry(FileEntry_t *f)
+{
+	fat_date_t FileDate;
+	fat_time_t FileTime;
+	char name[13];
+
+	// Do not print the disk label & deleted files
+	if (!(f->attribute.label) && strlen(f->name) != 0 &&
+		((f->name[0] & 0x000000E5) != 0xE5))
+	{
+		int_to_date(&FileDate, f->date);
+		int_to_time(&FileTime, f->time);
+
+		// Print attribute informations.
+		fat12_show_file_attrib(f->attribute);
+
+		// Print the file date and time.
+		printf("  %04d/%02d/%02d", (FileDate.year+1980), FileDate.month, FileDate.day);
+		printf("  %02d:%02d:%02d", FileTime.hour, FileTime.minute, FileTime.second);
+
+		// Print the file size.
+		if (f->attribute.directory)
+			printf("  %10d", fat12_get_num_cluster(f->startCluster) * FAT_SECTOR_SIZE);
+		else
+			printf("  %10d", (f->fileLength));
+
+		// Print the filename.
+		if (f->attribute.directory)
+			set_color(LIGHT_BLUE,BLACK);
+		if (f->attribute.hidden)
+			set_color(DARK_GREY,BLACK);
+		if (f->attribute.system)
+			set_color(MAGENTA,BLACK);
+		printf("  %s\n", fat12_construct_file_name(name, f));
+		set_color(WHITE,BLACK);
+
+		return true;
+	}
+	return false;
+}
+
+void fat12_set_dir(int new_dir, char* action)
+{
+	if (curr_dir == FAT_ROOT_REGION_START){
+		curr_dir = new_dir;
+		strcpy(curr_path,"/");
+		strcat(curr_path,action);
+	} else {
+
+		if (new_dir == 0)
+			new_dir = FAT_ROOT_REGION_START;
+		curr_dir = new_dir;
+
+		if (strcmp(action,".") == 0)
+			; // do nothing
+		else if (strcmp(action,"..") == 0) {
+			reverse(curr_path);
+			char* tmp_path = curr_path;
+			strsep(&tmp_path,"/");
+			reverse(tmp_path);
+			strcpy(curr_path,tmp_path);
+			if (curr_dir == FAT_ROOT_REGION_START)
+				strcpy(curr_path,"/");
+		} else {
+			strcat(curr_path,"/");
+			strcat(curr_path,action);
+		}
+	}
+}
+
+FileEntry_t* fat12_find_entry(char* folder)
+{
+	if (curr_dir == FAT_ROOT_REGION_START){
+		for (int i = 0; i < FAT_NUM_ROOT_ENTRY; ++i){
+			char entry_name[13]; // with dot(.)!
+			fat12_construct_file_name(entry_name,&root_dir.entry[i]);
+			if (strcmp(folder,entry_name) != 0)
+				continue;
+			return &root_dir.entry[i];
+		}
+	} else {
+		fat12_read_clusters((char*)&subdir,curr_dir);
+		for (int i = 0; i < FAT_NUM_DIR_ENTRY; ++i){
+			char entry_name[13]; // with dot(.)!
+			fat12_construct_file_name(entry_name,&subdir.entry[i]);
+			if (strcmp(folder,entry_name) != 0)
+				continue;
+			return &subdir.entry[i];
+		}
+	}
+	return NULL;
+}
+
+void fat12_ls()
+{
+	if (curr_dir == FAT_ROOT_REGION_START)
+		for (int i = 0; i < FAT_NUM_ROOT_ENTRY; ++i)
+			fat12_show_file_entry(&root_dir.entry[i]);
+	else {
+		fat12_read_clusters((char*)&subdir,curr_dir);
+		for (int i = 0; i < FAT_NUM_DIR_ENTRY; ++i)
+			fat12_show_file_entry(&subdir.entry[i]);
+	}
+}
+
+bool fat12_cd(char* folder)
+{
+	FileEntry_t* fe = fat12_find_entry(folder);
+	if (fe == NULL){
+		put_error("No such file or directory!");
+		return false;
+	}
+	fat12_set_dir(fe->startCluster,folder);
+	fat12_read_clusters((char*)&subdir,fe->startCluster);
+	// fat12_ls();
+	return true;
+}
+
+bool fat12_rm(char* filename)
+{
+	FileEntry_t* fe = fat12_find_entry(filename);
+	if (fe == NULL){
+		put_error("No such file or directory!");
+		return false;
+	}
+	fe->name[0] = 0x000000E5;
+	// if (curr_dir == FAT_ROOT_REGION_START)
+	// 	write_sectors((uintptr_t)&root_dir,FAT_ROOT_REGION_START,FAT_ROOT_SIZE);
+	// else
+	// 	fat12_write_clusters((char*)&subdir,curr_dir);
+	fat12_del_fat_entry(fe->startCluster);
+	return true;
+}
+
+void fat12_create_file(uintptr_t addr, int size, char* name)
+{
+	int numCluster = (size % FAT_SECTOR_SIZE == 0 ?
+		size / FAT_SECTOR_SIZE :
+		size / FAT_SECTOR_SIZE + 1);
+#ifdef DEBUG
+	printf("NumCluster:%d\n", numCluster);
+#endif
+
+	int cnt = 0, prevIndex = -1, cstart = 0;
+	for (int i = 2; i < FAT_NUM_ENTRY; ++i) // do NOT start from 0!
+		if (fat.entry[i] == 0){
+			if (cnt == 0)
+				cstart = i;
+			if (prevIndex != -1)
+				fat.entry[prevIndex] = i;
+			prevIndex = i;
+			// write_sectors(addr+i*FAT_SECTOR_SIZE,i+FAT_DATA_REGION_START-2,1);
+			cnt++;
+			if (cnt == numCluster){
+				fat.entry[i] = 0x0FFF;
+				break;
+			}
+		}
+	// fat12_write_back_fat();
+
+#ifdef DEBUG
+	printf("%s\n", name);
+#endif
+	for (int i = 0; i < FAT_NUM_ROOT_ENTRY; ++i)
+		if (root_dir.entry[i].name[0] == 0x00000000){
+			char tmp_name[20];
+			strcpy(tmp_name,name);
+			char* ext = tmp_name;
+			strsep(&ext,".");
+			strcpy(root_dir.entry[i].name,tmp_name);
+			for (int j = strlen(root_dir.entry[i].name); j < 8; ++j)
+				root_dir.entry[i].name[j] = ' ';
+			strcpy(root_dir.entry[i].extension,ext);
+			for (int j = strlen(root_dir.entry[i].extension); j < 3; ++j)
+				root_dir.entry[i].extension[j] = ' ';
+			root_dir.entry[i].attribute.archive = true;
+			root_dir.entry[i].startCluster = cstart;
+			root_dir.entry[i].fileLength = size;
+			root_dir.entry[i].date = date_to_int(2019,6,23);
+			root_dir.entry[i].time = time_to_int(0,0,0);
+			break;
+		}
+	// write_sectors((uintptr_t)&root_dir,FAT_ROOT_REGION_START,FAT_ROOT_SIZE);
+}
+
+bool fat12_cp(char* src, char* dst)
+{
+	char buf[512 * 30];
+	int size = 0;
+	if (fat12_read_file(src,buf,&size)){
+		fat12_create_file((uintptr_t)buf,size,dst);
+		return true;
+	}
+	return false;
+}
+

@@ -11,6 +11,7 @@
 #include "terminal.h"
 #include "flpydsk.h"
 
+#include "fat12a.h"
 #include "fat12.h"
 //#include "sysfile.h"
 
@@ -57,6 +58,7 @@ extern "C" void main(multiboot_info* bootinfo) {
 
 	//! initialize FAT12 filesystem
 	fsysFatInitialize ();
+	fat12_init();
 	//printf("=============1.1==============\n");	
 	
 /*

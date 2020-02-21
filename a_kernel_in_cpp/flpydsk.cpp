@@ -214,18 +214,18 @@ static volatile uint8_t _FloppyDiskIRQ = 0;
 //! initialize DMA to use phys addr 84k-128k
 extern void flpydsk_initialize_dma () {
 
-  printf("=============2.0==============\n");
+  //printf("=============2.0==============\n");
 	outportb (0x0a,0x06);	//mask dma channel 2
 	outportb (0xd8,0xff);	//reset master flip-flop
 	outportb (0x04, 0);     //address=0x1000 
 	outportb (0x04, 0x10);
 	outportb (0xd8, 0xff);  //reset master flip-flop
-  printf("=============2.1==============\n");
+  //printf("=============2.1==============\n");
 	outportb (0x05, 0xff);  //count to 0x23ff (number of bytes in a 3.5" floppy disk track)
 	outportb (0x05, 0x23);
 	outportb (0x80, 0);     //external page register = 0
 	outportb (0x0a, 0x02);  //unmask dma channel 2
-  printf("=============2.2==============\n");
+  //printf("=============2.2==============\n");
 }
 
 //! prepare the DMA for read transfer
@@ -449,41 +449,42 @@ extern void flpydsk_disable_controller () {
 //! enable controller
 extern void flpydsk_enable_controller () {
 
-  printf("=============4.1==============\n");
+  //printf("=============4.1==============\n");
 	flpydsk_write_dor ( FLPYDSK_DOR_MASK_RESET | FLPYDSK_DOR_MASK_DMA);
-	printf("=============4.2==============\n");
+	//printf("=============4.2==============\n");
 }
 
 //! reset controller
 extern void flpydsk_reset () {
-  printf("=============3==============\n");
+  //printf("=============3==============\n");
 	uint32_t st0, cyl;
 
-  printf("=============3.0==============\n");
+  //printf("=============3.0==============\n");
 	//! reset the controller
 	flpydsk_disable_controller ();
-	printf("=============3.1==============\n");
+	//printf("=============3.1==============\n");
 	flpydsk_enable_controller ();
-	printf("=============3.2==============\n");
+	//printf("=============3.2==============\n");
 	//flpydsk_wait_irq ();
-	printf("=============3.3==============\n");
+	//printf("=============3.3==============\n");
 
 	//! send CHECK_INT/SENSE INTERRUPT command to all drives
 	for (int i=0; i<4; i++){
 		flpydsk_check_int (&st0,&cyl);
-			printf("=============3.4==============\n");}
+			//printf("=============3.4==============\n");
+			}
 
 	//! transfer speed 500kb/s
 	flpydsk_write_ccr (0);
-		printf("=============3.5==============\n");
+		//printf("=============3.5==============\n");
 
 	//! pass mechanical drive info. steprate=3ms, unload time=240ms, load time=16ms
 	flpydsk_drive_data (3,16,240,true);
-		printf("=============3.6==============\n");
+		//printf("=============3.6==============\n");
 
 	//! calibrate the disk
 	flpydsk_calibrate ( _CurrentDrive );
-		printf("=============3.7==============\n");
+		//printf("=============3.7==============\n");
 }
 
 //! read a sector
@@ -559,19 +560,19 @@ extern void flpydsk_lba_to_chs (int lba,int *head,int *track,int *sector) {
 //! install floppy driver
 extern void flpydsk_install (int irq) {
 
-	printf("=============1.1==============\n");
+	//printf("=============1.1==============\n");
 	//! install irq handler
 	setvect (irq, (uint64_t)i86_flpy_irq);
-	printf("=============1.2==============\n");
+	//printf("=============1.2==============\n");
 	//! initialize the DMA for FDC
 	flpydsk_initialize_dma ();
-	printf("=============1.3==============\n");
+	//printf("=============1.3==============\n");
 	//! reset the fdc
 	flpydsk_reset ();
-	printf("=============1.4==============\n");
+	//printf("=============1.4==============\n");
 	//! set drive information
 	flpydsk_drive_data (13, 1, 0xf, true);
-		printf("=============1.5==============\n");
+		//printf("=============1.5==============\n");
 }
 
 //! set current working drive

@@ -3,6 +3,7 @@
 #include "DebugDisplay.h"
 #include "terminal.h"
 #include "Hal.h"
+#include "fat12a.h"
 #include "fat12.h"
 
 
@@ -130,24 +131,31 @@ void terminal_loop()
 			clear_screen();
 		}
 		else if (strcmp(str,"ls") == 0)
-		  printf("ls\n");
-			//fat12_ls();
+		{
+		  	printf("ls\n");
+			fat12_ls();
+		}
 		else if (strcmp(str,"cd") == 0){
-		  printf("cd\n");
-			//fat12_cd(rest);
-		} else if (strcmp(str,"rm") == 0){
+		  	printf("cd\n");
+			fat12_cd(rest);
+		} 
+		else if (strcmp(str,"rm") == 0)
+		{
 		  printf("rm\n");
-			//fat12_rm(rest);
-		} else if (strcmp(str,"write") == 0){
+			fat12_rm(rest);
+		} 
+		else if (strcmp(str,"write") == 0)
+		{
 		  printf("write\n");
-			//char buf[1000];
-			//strcpy(buf,"This is a test message!");
-			//fat12_create_file((uintptr_t)buf,strlen(buf),"test.txt");
-		} else if (strcmp(str,"cp") == 0){
+			char buf[1000];
+			strcpy(buf,"This is a test message!");
+			fat12_create_file((uintptr_t)buf,strlen(buf),"test.txt");
+		} 
+		else if (strcmp(str,"cp") == 0){
 		  printf("cp\n");
-			//char* src = rest;
-			//strsep(&rest," ");
-			//fat12_cp(src,rest);
+			char* src = rest;
+			strsep(&rest," ");
+			fat12_cp(src,rest);
 		} else if (strcmp(str,"tick") == 0)
 			printf("%d\n",get_tick_count());
 		else if (strcmp(str,"read") == 0)
@@ -218,6 +226,10 @@ void terminal_loop()
 			
 			//read_disk_test();
 
+		}
+		else if (strcmp(str,"read2") == 0)
+		{
+			read_disk_test();
 		}
 		else if (strcmp(str,"exec") == 0){
 		  printf("exec\n");

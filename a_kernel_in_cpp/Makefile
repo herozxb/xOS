@@ -51,6 +51,8 @@ fsys.o: fsys.cpp
 	gcc -O0 -ffreestanding -m32 -ggdb -c $< -o $@	
 ctype.o: ctype.cpp
 	gcc -O0 -ffreestanding -m32 -ggdb -c $< -o $@	
+fat12a.o: fat12a.cpp
+	gcc -O0 -ffreestanding -m32 -ggdb -c $< -o $@	
 	
 kernel_entry.o: kernel_entry.asm
 	nasm $< -f elf -o $@
@@ -78,10 +80,11 @@ KRNL.SYS: kernel.o \
           keyboard.o \
           terminal.o \
           flpydsk.o \
-          fat12.o \
+          fat12a.o \
           ide.o \
           fsys.o \
-          ctype.o
+          ctype.o \
+          fat12.o 
        
 
 	ld -o $@ -m elf_i386 -Ttext 0x100000 $^ --oformat binary
@@ -107,10 +110,11 @@ kernel.elf: kernel.o \
           keyboard.o \
           terminal.o \
           flpydsk.o \
-          fat12.o \
+          fat12a.o \
           ide.o \
           fsys.o \
-          ctype.o
+          ctype.o \
+          fat12.o 
 
 	ld -o $@ -m elf_i386 -Ttext 0x100000 $^ 
 
