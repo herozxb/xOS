@@ -85,9 +85,16 @@ struct tss_entry {
 
 //extern struct tss_entry tss;
 
-extern void tss_install (uint32_t sel);
+//extern void tss_install (uint32_t sel);
 
-extern void tss_set_stack (uint32_t ss, uint32_t esp);
+//extern void tss_set_stack (uint32_t ss, uint32_t esp);
+
+extern void tss_set_stack (uint16_t kernelSS, uint16_t kernelESP);
+extern void install_tss (uint32_t sel, uint16_t kernelSS, uint16_t kernelESP);
+extern void go_user ();
+//extern void enter_usermode ();
+
+
 
 #ifdef __cplusplus
 }

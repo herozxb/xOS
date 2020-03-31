@@ -42,3 +42,8 @@ b geninterrupt
 info frame
 info all-registers
 
+# other problem
+find . -type f | xargs -n 5 touch
+make clean
+make
+

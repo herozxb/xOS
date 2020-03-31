@@ -82,64 +82,100 @@ keyboard_handler:
 	sti
 	iretd               ; 32-bit return
 
-;sys_interrupt_handler:
+sys_interrupt_handler:
 ;	cli
 ;	jmp save_proc_entry
 ;save_proc_entry_ret:
-;	push eax            ; Functional number
-;	call sys_interrupt_handler_main
-;	pop ebx             ; Remember to pop out
+	push eax            ; Functional number
+	call sys_interrupt_handler_main
+	pop ebx             ; Remember to pop out
 	; eax store the return value
-;	sti
-;	iretd
+	sti
+	iretd
 
-;sys_pthread_handler:
-;	cli
-;	pusha ; ax,cx,dx,bx,sp,bp,si,di
-;	push ds
-;	push es
-;	push fs
-;	push gs
+sys_pthread_handler:
+	cli
+	pusha ; ax,cx,dx,bx,sp,bp,si,di
+	push ds
+	push es
+	push fs
+	push gs
 
-;	call save_proc
+	call save_proc
 
-;	pop gs
-;	pop fs
-;	pop es
-;	pop ds
-;	popa
+	pop gs
+	pop fs
+	pop es
+	pop ds
+	popa
 
-;	push eax            ; Functional number
-;	call sys_pthread_handler_main
-;	pop ebx             ; Remember to pop out
+	push eax            ; Functional number
+	call sys_pthread_handler_main
+	pop ebx             ; Remember to pop out
 	; eax store the return value
-;	sti
-;	iretd
+	sti
+	iretd
 
-;sys_file_handler:
-;	cli
-;	pusha ; ax,cx,dx,bx,sp,bp,si,di
-;	push ds
-;	push es
-;	push fs
-;	push gs
+sys_file_handler:
+	cli
+	pusha ; ax,cx,dx,bx,sp,bp,si,di
+	push ds
+	push es
+	push fs
+	push gs
 
-;	call save_proc
+	call save_proc
 
-;	pop gs
-;	pop fs
-;	pop es
-;	pop ds
-;	popa
+	pop gs
+	pop fs
+	pop es
+	pop ds
+	popa
 
-;	push eax            ; Functional number
-;	call sys_file_handler_main
-;	pop ebx             ; Remember to pop out
+	push eax            ; Functional number
+	call sys_file_handler_main
+	pop ebx             ; Remember to pop out
 	; eax store the return value
-;	sti
-;	iretd
+	sti
+	iretd
 	
 	
+	
+
+;;;;; user mode ;;;;;
+
+[ global enter_usermode ]
+
+; | ss     | ; esp+16: the stack segment selector we want for user mode
+; | esp    | ; esp+12: the user mode stack pointer
+; | eflags | ; esp+8: the control flags we want to use in user mode
+; | cs     | ; esp+4: the code segment selector
+; | eip    | ; esp: the instruction pointer of user mode code to execute
+enter_usermode:
+	cli
+	push ebp
+	mov ebp, esp
+	mov ecx, [ebp + 8] ; user program address
+
+	mov ax, 0x23	; user mode data selector is 0x20 (GDT entry 4). Also sets RPL to 3 (user mode)
+	mov ds, ax
+	mov es, ax
+	mov fs, ax
+	mov gs, ax
+
+	mov eax, esp
+	push 0x23		; SS, notice it uses same selector as above
+	push eax		; ESP
+
+	pushf			; EFLAGS, remember to set up INTERRUPTS!!!
+	pop eax         ; Get EFLAGS back into EAX. The only way to read EFLAGS is to pushf then pop
+	or eax, 0x200   ; Set the IF flag
+	push eax        ; Push the new EFLAGS value back onto the stack
+
+	push 0x1b		; CS, user mode code selector is 0x18 (GDT 3). With RPL 3 is 0x1b
+	push ecx        ; EIP
+	iret
+
 
 [ global pit_handler_entry ]
 [ extern save_proc ]

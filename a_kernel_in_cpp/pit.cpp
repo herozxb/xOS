@@ -13,6 +13,7 @@
 #include "pit.h"
 #include "pic.h"
 #include "Hal.h"
+//#include "task.h"
 
 //============================================================================
 //    IMPLEMENTATION PRIVATE DEFINITIONS / ENUMERATIONS / SIMPLE TYPEDEFS
@@ -164,6 +165,7 @@ bool i86_pit_is_initialized () {
 	return _pit_bIsInit;
 }
 
+/*
 // pit timer interrupt handler
 void pit_handler_main(
 	uint32_t gs,uint32_t fs,uint32_t es,uint32_t ds,
@@ -179,7 +181,7 @@ void pit_handler_main(
 	// tell hal we are done
 	interruptdone(0);
 }
-
+//*/
 //============================================================================
 //    INTERFACE CLASS BODIES
 //============================================================================

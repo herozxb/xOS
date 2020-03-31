@@ -22,6 +22,8 @@
 #include "DebugDisplay.h"
 #include "exception.h"
 #include "flpydsk.h"
+#include "syscall.h"
+#include "systhread.h"
 
 //============================================================================
 //    IMPLEMENTATION PRIVATE DEFINITIONS / ENUMERATIONS / SIMPLE TYPEDEFS
@@ -113,10 +115,13 @@ int i86_cpu_initialize () {
 	setvect (19, (unsigned long) simd_fpu_fault);
 	setvect (38, (uint64_t)i86_flpy_irq);
 
+
+	//setvect_user (0x80, (uint64_t)syscall_dispatcher);
+	
 	// install my own interrupts
-	//setvect_user (0x80, (unsigned long) sys_interrupt_handler);
-	//setvect_user (0x81, (unsigned long) sys_pthread_handler);
-	//setvect_user (0x82, (unsigned long) sys_file_handler);
+	setvect_user (0x80, (unsigned long) sys_interrupt_handler);
+	setvect_user (0x81, (unsigned long) sys_pthread_handler);
+	setvect_user (0x82, (unsigned long) sys_file_handler);
 
 //! generates int 5 instruction. You can also use inline assembly, of course
   //geninterrupt (5);

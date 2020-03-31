@@ -2,7 +2,9 @@
 #include "stdio.h"
 #include <stdint.h>
 #include "fat12.h"
+#include "fat12a.h"
 #include "Hal.h"
+#include "flpydsk.h"
 
 /*
  * FAT12
@@ -79,11 +81,34 @@ static fat_subdir_t subdir;
 // bool cat(char *stringa);
 // bool rm(char *filename);
 
+// Boot Sector (BS) & BPB (BIOS Parameter Block)
+/*
+typedef struct bootsect
+{
+	uint8_t	      Jump[3]; // 3
+	char          BS_OEMName[8]; // 11
+	uint16_t      BPB_BytesPerSector; // 13
+	uint8_t       BPB_SectorsPerCluster; // 14
+	uint16_t      BPB_ReservedSectors; // 16
+	uint8_t       BPB_NumFATs; // 17
+	uint16_t      BPB_RootDirectoryEntries; // 19
+	uint16_t      BPB_LogicalSectors; // 21
+	uint8_t       BPB_MediumDescriptorByte; // 22
+	uint16_t      BPB_SectorsPerFat; // 24
+	uint16_t      BPB_SectorsPerTrack; // 26
+	uint16_t      BPB_NumHeads; // 28
+	uint32_t      BPB_HiddenSectors; // 32
+	uint8_t       code[480]; // the last 2B is signature "AA55h" 
+
+} __attribute__ ((packed)) bootsect_t; //512
+static bootsect_t bootsector;
+//*/
+
 bool fat12_init()
 {
-	// Boot sector
+	// Boot sector　　　　　　　　　　　　　　　　　　　　　　FAT_BOOTSECTOR_START=0　　　FAT_BOOTSECTOR_SIZE=1
 	read_sectors((uintptr_t)&bootsector,FAT_BOOTSECTOR_START,FAT_BOOTSECTOR_SIZE);
-
+  //read_sectors() is in the "ide.h"
 
 	printf("\nInitializing FileSystem...\n");
 	printf("\n");
@@ -103,30 +128,85 @@ bool fat12_init()
 	printf("\n");
 
 
-	// FAT sectors
+
+
+/*
+typedef struct phys_fat
+{
+	uint8_t entry [FAT_PHYS_SIZE * FAT_SECTOR_SIZE]; // 4608　FAT_PHYS_SIZE=9 * FAT_SECTOR_SIZE=512
+
+} __attribute__ ((packed)) phys_fat12_t;
+static phys_fat12_t phys_fat;
+
+//*/
+	// FAT sectors                    FAT_ENTRY_START=1 FAT_PHYS_SIZE=9
 	read_sectors((uintptr_t)&phys_fat,FAT_ENTRY_START,FAT_PHYS_SIZE);
 
+/*
+typedef struct logic_fat
+{
+	// only the first 3B are used (24bits)
+	// the first two clusters (0,1) are useless
+	uint32_t entry [FAT_NUM_ENTRY]; // 3072 //FAT_NUM_ENTRY=3072 uint32_t=4Bytes
+
+} __attribute__ ((packed)) fat12_t;
+static fat12_t fat;
+//*/
+
 	// Converts the FAT into the logical structures (array of word).
-	for (int i = 0, j = 0; i < 4608; i += 3)
+	for (int i = 0, j = 0; i < 4608; i += 3) //4608/3=1536
 	{
 		fat.entry[ j++ ] = (phys_fat.entry[i] + (phys_fat.entry[i+1] << 8)) & 0x0FFF;
 		fat.entry[ j++ ] = (phys_fat.entry[i+1] + (phys_fat.entry[i+2] << 8)) >> 4;
 	}
+/*
 
-	// root directory
+// Root Directory
+// 16 directory entries per sector = 512B / 32B = 16
+// 14 sectors * 16 = 224 entries
+typedef struct FileEntry // 32B
+{
+	char name[8];
+	char extension[3];
+	fat12_file_attr_t attribute;
+	uint8_t reserved[10];
+	uint16_t time;
+	uint16_t date;
+	uint16_t startCluster;
+	uint32_t fileLength;
+
+} __attribute__ ((packed)) FileEntry_t;
+
+
+typedef struct root_directory
+{
+	FileEntry_t entry[FAT_SECTOR_SIZE / sizeof(FileEntry_t) * FAT_ROOT_SIZE]; // 224 FAT_SECTOR_SIZE=512/sizeof(FileEntry_t) =32Bytes * 14 = 512 / 32 * 14 = 16 * 14 = 224
+
+} __attribute__ ((packed)) fat_root_t;
+
+static fat_root_t root_dir;
+
+//*/
+	// root directory                 FAT_ROOT_REGION_START=19 FAT_ROOT_SIZE=14
 	read_sectors((uintptr_t)&root_dir,FAT_ROOT_REGION_START,FAT_ROOT_SIZE);
 
-/*
-	printf("\nInitializing FileSystem...\n");
-	printf("\n");
-	printf("name:%c\n", root_dir.entry[0].name[0]);
-	printf("extension:%c\n", root_dir.entry[0].extension[0]);
-	printf("root_dir:%s\n", root_dir.entry[0].reserved);
-	printf("time:%d\n", root_dir.entry[0].time);
-	printf("date:%d\n", root_dir.entry[0].date);
-	printf("startCluster:%d\n", root_dir.entry[0].startCluster);
-	printf("fileLength:%d\n", root_dir.entry[0].fileLength);
 
+  //int i = 33;
+	//printf("\nInitializing FileSystem...\n");
+	//printf("\n");
+	//printf("name:%s\n", root_dir.entry[i].name);
+	//printf("extension:%s\n", root_dir.entry[i].extension);
+	//printf("root_dir:%s\n", root_dir.entry[i].reserved);
+	//printf("time:%d\n", root_dir.entry[i].time);
+	//printf("date:%d\n", root_dir.entry[i].date);
+	//printf("startCluster:%d\n", root_dir.entry[i].startCluster);
+	//printf("fileLength:%d\n", root_dir.entry[i].fileLength);
+
+
+  for(int j = 33; j<80;j++)
+  {
+    //printf("<%c%c%c%c%c%c%c%c>", root_dir.entry[j].name[0],root_dir.entry[j].name[1],root_dir.entry[j].name[2],root_dir.entry[j].name[3],root_dir.entry[j].name[4],root_dir.entry[j].name[5],root_dir.entry[j].name[6],root_dir.entry[j].name[8]);
+  }
 	printf("\n");
 //*/
 	// set current path
@@ -318,9 +398,9 @@ void fat12_del_fat_entry(uint32_t cstart)
 
 bool fat12_read_file(char* filename, char* addr, int* size)
 {
-#ifdef DEBUG
+
 	printf("%s\n", filename);
-#endif
+
 	for (int i = 0; i < FAT_NUM_ROOT_ENTRY; ++i){
 		char entry_name[13]; // with dot(.)!
 		fat12_construct_file_name(entry_name,&root_dir.entry[i]);
@@ -369,6 +449,58 @@ int fat12_get_num_cluster(uint32_t start)
 
 	return c;
 }
+/*
+
+typedef struct FileEntry // 32B
+{
+	char name[8];
+	char extension[3];
+	fat12_file_attr_t attribute;
+	uint8_t reserved[10];
+	uint16_t time;
+	uint16_t date;
+	uint16_t startCluster;
+	uint32_t fileLength;
+
+} __attribute__ ((packed)) FileEntry_t;
+
+
+typedef struct _DIRECTORY {
+
+	uint8_t   Filename[8];
+	uint8_t   Ext[3];
+	uint8_t   Attrib;
+	uint8_t   Reserved;
+	uint8_t   TimeCreatedMs;
+	uint16_t  TimeCreated;
+	uint16_t  DateCreated;
+	uint16_t  DateLastAccessed;
+	uint16_t  FirstClusterHiBytes;
+	uint16_t  LastModTime;
+	uint16_t  LastModDate;
+	uint16_t  FirstCluster;
+	uint32_t  FileSize;
+
+}DIRECTORY, *PDIRECTORY;
+
+
+typedef struct _FILE {
+
+	char        name[32];
+	uint32_t    flags;
+	uint32_t    fileLength;
+	uint32_t    id;
+	uint32_t    eof;
+	uint32_t    position;
+	uint32_t    currentCluster;
+	uint32_t    deviceID;
+	
+	char        buffer[1024];
+
+}FILE, *PFILE;
+
+
+//*/
 
 bool fat12_show_file_entry(FileEntry_t *f)
 {
@@ -463,8 +595,14 @@ FileEntry_t* fat12_find_entry(char* folder)
 	return NULL;
 }
 
+
+
 void fat12_ls()
 {
+  const char* DirectoryName = "ls";
+  fsysFatDirectory(DirectoryName);
+
+/*
 	if (curr_dir == FAT_ROOT_REGION_START)
 		for (int i = 0; i < FAT_NUM_ROOT_ENTRY; ++i)
 			fat12_show_file_entry(&root_dir.entry[i]);
@@ -473,6 +611,7 @@ void fat12_ls()
 		for (int i = 0; i < FAT_NUM_DIR_ENTRY; ++i)
 			fat12_show_file_entry(&subdir.entry[i]);
 	}
+	//*/
 }
 
 bool fat12_cd(char* folder)

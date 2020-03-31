@@ -68,7 +68,7 @@ void readsect(uintptr_t dst, uint32_t secno) {
       //printf("===========6.2.2.4============");
 }
 */
-
+//            uintptr_t dst is the desternation address
 void readsect(uintptr_t dst, uint32_t secno) {
 	//printf("===========readsect()============");
 	dst =(uintptr_t) flpydsk_read_sector(secno);

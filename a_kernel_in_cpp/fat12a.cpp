@@ -7,6 +7,7 @@
 
 #include "DebugDisplay.h"
 #include "fat12a.h"
+#include "fat12.h"
 #include "string.h"
 #include "flpydsk.h"
 #include "bpb.h"
@@ -19,8 +20,7 @@
 //! FAT FileSystem
 FILESYSTEM _FSysFat;
 
-//! Mount info
-MOUNT_INFO _MountInfo;
+
 
 //! File Allocation Table (FAT)
 uint8_t FAT [SECTOR_SIZE*2];
@@ -73,17 +73,21 @@ void ToDosFileName (const char* filename,
 /**
 *	Locates file or directory in root directory
 */
-FILE fsysFatDirectory (const char* DirectoryName) {
+
+
+FILE fat12a_ls(const char* DirectoryName)
+{
 
 	FILE file;
 	unsigned char* buf;
+
 	PDIRECTORY directory;
 
 	//! get 8.3 directory name
 	char DosFileName[11];
 	ToDosFileName (DirectoryName, DosFileName, 11);
 	DosFileName[11]=0;
-	//printf("=DosFileName = %c%c%c%c%c%c%c%c%c%c%c=", DosFileName[0],DosFileName[1],DosFileName[2],DosFileName[3],DosFileName[4],DosFileName[5],DosFileName[6],DosFileName[7],DosFileName[8],DosFileName[9],DosFileName[10]);
+	//printf("=DosFileName <%c%c%c%c%c%c%c%c%c%c%c>\n", DosFileName[0],DosFileName[1],DosFileName[2],DosFileName[3],DosFileName[4],DosFileName[5],DosFileName[6],DosFileName[7],DosFileName[8],DosFileName[9],DosFileName[10]);
 
 	//! 14 sectors per directory
 	for (int sector=0; sector<24; sector++) {
@@ -113,7 +117,114 @@ FILE fsysFatDirectory (const char* DirectoryName) {
 			//	printf("compare result is %d",strcmp (DosFileName, name));
 			
 			//}
+			
 			//! find a match?
+			
+			  //if(name[0]!=0)
+			 // {
+			  //printf("i=%d",i);
+				//printf("=all the FileName=<%c%c%c%c%c%c%c%c%c%c%c>\n", name[0],name[1],name[2],name[3],name[4],name[5],name[6],name[7],name[8],name[9],name[10]);
+        //}
+      
+        
+      char name_ls[12];
+			memcpy (name_ls, "LS     TXT", 11);
+			name_ls[11]=0;
+			
+      if (directory->FileSize <1440000 && directory->FileSize > 0 && DirectoryName[0] =='l' && DirectoryName[1] =='s' ) {
+			    fat12_show_file_entry((FileEntry_t*)directory);
+			}
+			
+
+			//! go to next directory
+			directory++;
+		}
+	}
+
+	//! unable to find file
+	file.flags = FS_INVALID;
+	return file;
+
+}
+
+FILE fsysFatDirectory (const char* DirectoryName) {
+
+	FILE file;
+	unsigned char* buf;
+	
+/*
+typedef struct _DIRECTORY {
+
+	uint8_t   Filename[8];
+	uint8_t   Ext[3];
+	uint8_t   Attrib;
+	uint8_t   Reserved;
+	uint8_t   TimeCreatedMs;
+	uint16_t  TimeCreated;
+	uint16_t  DateCreated;
+	uint16_t  DateLastAccessed;
+	uint16_t  FirstClusterHiBytes;
+	uint16_t  LastModTime;
+	uint16_t  LastModDate;
+	uint16_t  FirstCluster;
+	uint32_t  FileSize;
+
+}DIRECTORY, *PDIRECTORY;
+//*/
+	PDIRECTORY directory;
+
+	//! get 8.3 directory name
+	char DosFileName[11];
+	ToDosFileName (DirectoryName, DosFileName, 11);
+	DosFileName[11]=0;
+	printf("=DosFileName <%c%c%c%c%c%c%c%c%c%c%c>\n", DosFileName[0],DosFileName[1],DosFileName[2],DosFileName[3],DosFileName[4],DosFileName[5],DosFileName[6],DosFileName[7],DosFileName[8],DosFileName[9],DosFileName[10]);
+
+	//! 14 sectors per directory
+	for (int sector=0; sector<19; sector++) {
+
+		//printf("=key sector is %d=",_MountInfo.rootOffset + sector + 10);
+		//! read in sector of root directory
+		//printf("=_MountInfo.rootOffset = %d=",_MountInfo.rootOffset);
+		buf = (unsigned char*) flpydsk_read_sector (_MountInfo.rootOffset + sector );
+
+		//! get directory info
+		directory = (PDIRECTORY) buf;
+		//! 16 entries per sector
+		for (int i=0; i<16; i++) {
+
+			//printf("DosFileName1[0] = [%c]",DosFileName1[0]);
+
+			//! get current filename
+			char name[12];
+			memcpy (name, directory->Filename, 11);
+			name[11]=0;
+			
+			//printf("DosFileName1[0] = [%c]",DosFileName1[0]);
+			//printf("=DosFileName3 =[%c%c%c%c%c%c%c%c%c%c%c]\n", DosFileName1[0],DosFileName1[1],DosFileName1[2],DosFileName1[3],DosFileName1[4],DosFileName1[5],DosFileName1[6],DosFileName1[7],DosFileName1[8],DosFileName1[9],DosFileName1[10]);
+			//if(name[0]!=NULL)
+			//{
+			//	printf("=key name =[%c%c%c%c%c%c%c%c%c%c%c]\n", name[0],name[1],name[2],name[3],name[4],name[5],name[6],name[7],name[8],name[9],name[10]);
+			//	printf("compare result is %d",strcmp (DosFileName, name));
+			
+			//}
+			
+			//! find a match?
+			
+			  //if(name[0]!=0)
+			 // {
+			  //printf("i=%d",i);
+				//printf("=all the FileName=<%c%c%c%c%c%c%c%c%c%c%c>\n", name[0],name[1],name[2],name[3],name[4],name[5],name[6],name[7],name[8],name[9],name[10]);
+        //}
+      
+        
+      char name_ls[12];
+			memcpy (name_ls, "LS     TXT", 11);
+			name_ls[11]=0;
+			
+      if (directory->FileSize <1440000 && directory->FileSize > 0 && DirectoryName[0] =='l' && DirectoryName[1] =='s' ) {
+			    fat12_show_file_entry((FileEntry_t*)directory);
+			}
+			
 			if (strcmp (DosFileName, name) == 0) {
 
 				//! found it, set up file info
@@ -125,6 +236,8 @@ FILE fsysFatDirectory (const char* DirectoryName) {
 				file.fileLength     = directory->FileSize;
 				file.eof            = 0;
 				file.fileLength     = directory->FileSize;
+				
+				
 
 				//! set file type
 				if (directory->Attrib == 0x10)
@@ -344,11 +457,30 @@ FILE fsysFatOpenSubDir (FILE kFile,
 */
 FILE fsysFatOpen (const char* FileName) {
 
+
+/*
+typedef struct _FILE {
+
+	char        name[32];
+	uint32_t    flags;
+	uint32_t    fileLength;
+	uint32_t    id;
+	uint32_t    eof;
+	uint32_t    position;
+	uint32_t    currentCluster;
+	uint32_t    deviceID;
+	
+	char        buffer[1024];
+
+}FILE, *PFILE;
+//*/
+
 	FILE curDirectory;
 	char* p = 0;
 	bool rootDir=true;
 	char* path = (char*) FileName;
-	//printf("=in the fsysFatOpen()=");
+	printf("=in the fsysFatOpen()=\n");
+	printf("=%s=\n",path);
 	//! any '\'s in path?
 	p = strchr (path, '\\');
 
@@ -356,9 +488,16 @@ FILE fsysFatOpen (const char* FileName) {
 
 		//! nope, must be in root directory, search it
 		curDirectory = fsysFatDirectory (path);
-		//printf("=in the curDirectory=");
-		//printf("=curDirectory.flags %d=",curDirectory.flags);
-		//printf("=curDirectory.deviceID %c=",curDirectory.deviceID);
+		//printf("=curDirectory=\n");
+		//printf("=curDirectory.name=%s;\n",curDirectory.name);
+		//printf("=curDirectory.flags=%d;\n",curDirectory.flags);
+		//printf("=curDirectory.fileLength=%d;\n",curDirectory.fileLength);
+		//printf("=curDirectory.id=%d;\n",curDirectory.id);
+		//printf("=curDirectory.eof=%d;\n",curDirectory.eof);
+		//printf("=curDirectory.position=%d;\n",curDirectory.position);
+		//printf("=curDirectory.currentCluster=%d;\n",curDirectory.currentCluster);
+		//printf("=curDirectory.deviceID=%d;\n",curDirectory.deviceID);
+		//printf("=curDirectory.buffer=%s;\n",curDirectory.buffer);
 		//! found file?
 		if (curDirectory.flags == FS_FILE)
 		{

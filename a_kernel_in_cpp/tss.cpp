@@ -1,23 +1,61 @@
+
+//****************************************************************************
+//**
+//**    tss.h
+//**
+//**	Task State Segment
+//**
+//****************************************************************************
+
+//============================================================================
+//    IMPLEMENTATION HEADERS
+//============================================================================
+
+#include "string.h"
+#include "gdt.h"
 #include "tss.h"
+#include "Hal.h"
 
-/*
-struct tss_entry tss={0};
+//============================================================================
+//    IMPLEMENTATION PRIVATE DEFINITIONS / ENUMERATIONS / SIMPLE TYPEDEFS
+//============================================================================
+//============================================================================
+//    IMPLEMENTATION PRIVATE CLASS PROTOTYPES / EXTERNAL CLASS REFERENCES
+//============================================================================
+//============================================================================
+//    IMPLEMENTATION PRIVATE STRUCTURES / UTILITY CLASSES
+//============================================================================
+//============================================================================
+//    IMPLEMENTATION REQUIRED EXTERNAL REFERENCES (AVOID)
+//============================================================================
+//============================================================================
+//    IMPLEMENTATION PRIVATE DATA
+//============================================================================
 
-void tss_install (uint32_t sel) {
+static tss_entry TSS;
 
-	memset((void *)&tss, 0, sizeof(tss));
+//============================================================================
+//    INTERFACE DATA
+//============================================================================
+//============================================================================
+//    IMPLEMENTATION PRIVATE FUNCTION PROTOTYPES
+//============================================================================
 
-	// Here we set the cs, ss, ds, es, fs and gs entries in the TSS. These specify what
-	// segments should be loaded when the processor switches to kernel mode. Therefore
-	// they are just our normal kernel code/data segments - 0x08 and 0x10 respectively,
-	// but with the last two bits set, making 0x0b and 0x13. The setting of these bits
-	// sets the RPL (requested privilege level) to 3, meaning that this TSS can be used
-	// to switch to kernel mode from ring 3.
-	tss.ss0 = KERNEL_DS;
-	tss.esp0 = 0x0;
-	tss.cs = KERNEL_CS | DPL_USER;
-	tss.ss = tss.es = tss.ds = tss.fs = tss.gs = KERNEL_DS | DPL_USER;
+void install_tsr (uint16_t sel);
 
+//============================================================================
+//    IMPLEMENTATION PRIVATE FUNCTIONS
+//============================================================================
+
+void flush_tss (uint16_t sel) {
+
+//	_asm {
+//		cli
+//		mov eax, 0x2b
+//		ltr eax
+//		sti
+//	}
+	
 	__asm__ volatile (
 		  ".intel_syntax noprefix \n\t"
 			"ltr ax\n\t"
@@ -28,12 +66,163 @@ void tss_install (uint32_t sel) {
 			);
 }
 
-void tss_set_stack (uint32_t ss, uint32_t esp) {
+//============================================================================
+//    INTERFACE FUNCTIONS
+//============================================================================
 
-	// memset((void *)&tss, 0, sizeof(tss));
-	tss.ss0 = ss;
-	tss.esp0 = esp;
-	// tss.ebp = ebp;
-	// tss.iomap = sizeof(tss);
+void tss_set_stack (uint16_t kernelSS, uint16_t kernelESP) {
+
+	TSS.ss0 = kernelSS;
+	TSS.esp0 = kernelESP;
 }
+
+void install_tss (uint32_t idx, uint16_t kernelSS, uint16_t kernelESP) {
+
+	//! install TSS descriptor
+	uint32_t base = (uint32_t) &TSS;
+
+	//! install descriptor
+	gdt_set_descriptor (idx, base, base + sizeof (tss_entry),
+		I86_GDT_DESC_ACCESS|I86_GDT_DESC_EXEC_CODE|I86_GDT_DESC_DPL|I86_GDT_DESC_MEMORY,
+		0);
+
+	//! initialize TSS
+	memset ((void*) &TSS, 0, sizeof (tss_entry));
+
+	//! set stack and segments
+	TSS.ss0 = kernelSS;
+	TSS.esp0 = kernelESP;
+	TSS.cs=0x0b;
+	TSS.ss = 0x13;
+	TSS.es = 0x13;
+	TSS.ds = 0x13;
+	TSS.fs = 0x13;
+	TSS.gs = 0x13;
+
+	//! flush tss
+	flush_tss (idx);
+	//flush_tss (idx * sizeof (gdt_descriptor));
+}
+
+
+
+void go_user () {
+
+    printf ("------[1.0]------\n");
+    //	int stack=0;
+    //	_asm mov [stack], esp
+/*
+
+    int stack=0;
+    __asm__ __volatile__
+    (  // ".intel_syntax noprefix \n\t"
+	      ".intel_syntax noprefix \n\t" 
+        "mov [%[stack]], esp\n\t"
+        ".att_syntax"
+        :  [stack] "=&r" (stack)
+        :
+    );
+    printf ("------[1.1]------\n");
+    extern void tss_set_stack (uint16_t, uint16_t);
+    tss_set_stack (0x10,stack);
+
+    printf ("------[1.2]------\n");
+    enter_usermode();
+    printf ("------[1.3]------\n");
+
+    char testStr[]="\n\rWe are inside of your computer...";
+
+//! call OS-print message
+//	_asm xor eax, eax
+//	_asm lea ebx, [testStr]
+//	_asm int 0x80
+	//*/
+	  geninterrupt(0x80);
+	  /*
+	  			__asm__ volatile (
+	        ".intel_syntax noprefix \n\t"
+	        "int 0x80\n\r"
+	        ".att_syntax"
+	        );
+/*		
+			__asm__ volatile (
+	        ".intel_syntax noprefix \n\t"
+	        "xor eax, eax\n\r"
+	        "lea ebx, [%[testStr]]\n\r"
+	        "int 0x80\n\r"
+	        ".att_syntax"
+	        :: [testStr] "g" (testStr)
+	        );
+	        //*/
+		printf ("------We are inside of your computer...------\n");
+	//! cant do CLI+HLT here, so loop instead
+	while(1);
+}
+
+
+
+/**
+*	Enters user mode
 */
+//void enter_usermode () {
+
+/*
+	_asm {
+
+		cli
+		mov ax, 0x23	; user mode data selector is 0x20 (GDT entry 3). Also sets RPL to 3
+		mov ds, ax
+		mov es, ax
+		mov fs, ax
+		mov gs, ax
+
+		push 0x23		; SS, notice it uses same selector as above
+		push esp		; ESP
+		pushfd			; EFLAGS
+
+		pop eax
+		or eax, 0x200	; enable IF in EFLAGS
+		push eax
+
+		push 0x1b		; CS, user mode code selector is 0x18. With RPL 3 this is 0x1b
+		lea eax, [a]	; EIP first
+		push eax
+		iretd
+	a:
+		add esp, 4 // fix stack
+	}
+	
+//*/
+	/*
+		
+		__asm__ volatile (
+	        ".intel_syntax noprefix \n\t"
+	        "cli\n\r"
+	        "mov ax, 0x23\n\r"
+	        "mov ds, ax\n\r"
+	        "mov es, ax\n\r"
+	        "mov fs, ax\n\r"
+	        "mov gs, ax\n\r"
+	        "push 0x23\n\r"
+	        "push esp\n\r"	        
+	        "pushfd\n\r"
+	        "pop eax\n\r"
+	        "or eax, 0x200\n\r"
+	        "push eax\n\r"	        
+	        "push 0x1b\n\r"
+	        "lea eax, [a]\n\r"
+	        "push eax\n\r"
+	        "iretd\n\r"
+	        "a:\n\r"
+	        "add esp, 4\n\r"
+	        ".att_syntax");
+}
+//*/
+//============================================================================
+//    INTERFACE CLASS BODIES
+//============================================================================
+//****************************************************************************
+//**
+//**    END[tss.cpp]
+//**
+//****************************************************************************

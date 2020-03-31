@@ -5,6 +5,7 @@
 #include "Hal.h"
 #include "fat12a.h"
 #include "fat12.h"
+#include "user.h"
 
 
 #define MAX_TERMINAL 4
@@ -132,8 +133,10 @@ void terminal_loop()
 		}
 		else if (strcmp(str,"ls") == 0)
 		{
-		  	printf("ls\n");
-			fat12_ls();
+		  printf("ls\n");
+			//fat12_ls();
+			const char* DirectoryName = "ls";
+			fat12a_ls(DirectoryName);
 		}
 		else if (strcmp(str,"cd") == 0){
 		  	printf("cd\n");
@@ -167,12 +170,29 @@ void terminal_loop()
 			char path[32];//="file.txt";
 			printf ("\n\rInput example: \"file.txt\", \"a:\\file.txt\", \"a:\\folder\\file.txt\"\n\rFilename> ");
 			getline(path);
-
+			
+			
+      printf("\n%s\n",path);
 			//! open file
 			FILE file = volOpenFile (path);
+			//FILE curDirectory = fsysFatDirectory (path);
+			
+      //printf("=file=\n");
+      //printf("=file.name=%s;\n",file.name);
+      //printf("=file.flags=%d;\n",file.flags);
+      //printf("=file.fileLength=%d;\n",file.fileLength);
+      //printf("=file.id=%d;\n",file.id);
+      //printf("=file.eof=%d;\n",file.eof);
+      //printf("=file.position=%d;\n",file.position);
+      //printf("=file.currentCluster=%d;\n",file.currentCluster);
+      //printf("=file.deviceID=%d;\n",file.deviceID);
+      //printf("=file.buffer=%s;\n",file.buffer);
+
+			
+			
 			//printf("=====read file 1.0=====\n");
 			//! test for invalid file
-			if (file.flags == FS_INVALID) {
+			if (file.flags == FS_INVALID) {  //FS_INVALID =2
 
 				printf ("\n\rUnable to open file\n");
 				//printf("%x",'E');
@@ -200,29 +220,31 @@ void terminal_loop()
 				//! read cluster
 				unsigned char buf[512];
 				//printf("=start volReadFile()=\n");
-				volReadFile ( &file, buf, 512);
+				volReadFile ( &file, buf,file.fileLength);
 				//fsysFatRead( &file, buf, 512);
 				//printf("=before display file=\n");
 			
 				//! display file
-				for (int i=0; i<512; i++)
+				for (int i=0; i<file.fileLength; i++)
 				{
 					//printf("#,");
 					printf("%c",buf[i]);
 					//DebugPutc (buf[i]);
 				}
-				printf ("\n------[continue]------\n");
+				//printf("=file.eof=%d;\n",file.eof);
+				printf ("------[continue]------\n");
 
 				//! wait for input to continue if not EOF
 				if (file.eof != 1) {
-					printf ("\n\r------[Press a key to continue]------");
+				  //printf("=file.eof=%d;\n",file.eof);
+					printf ("------[file is not end]------\n");
 					//getch ();
-					printf ("\r"); //clear last line
+					//printf ("\r"); //clear last line
 				}
 			}
 
 			//! done :)
-			DebugPrintf ("\n\n\r--------[EOF]--------");
+			//printf ("\n--------[EOF]--------");
 			
 			//read_disk_test();
 
@@ -231,9 +253,13 @@ void terminal_loop()
 		{
 			read_disk_test();
 		}
+		else if (strcmp(str,"user") == 0)
+		{
+			go_user();
+		}
 		else if (strcmp(str,"exec") == 0){
 		  printf("exec\n");
-			//exec_user_prg(rest);
+			exec_user_prg(rest);
 		} else
 			command_not_found(str);
 	}

@@ -17,6 +17,7 @@ extern "C"
 #include "stdio.h"
 #include "string.h"
 #include "DebugDisplay.h"
+#include "tss.h"
 //#include "user.h"
 
 #define MAX_TERMINAL 4

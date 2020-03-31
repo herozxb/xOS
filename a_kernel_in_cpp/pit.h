@@ -75,6 +75,11 @@ extern "C"
 //! send operational command to pit. Set up command by using the operational
 //! command bit masks and setting them with the control bits. Shouldn't need to use
 //! this outside the interface
+
+// Global Tick count
+static volatile uint32_t			pit_ticks = 0;
+
+
 extern void i86_pit_send_command (uint8_t cmd);
 
 //! write data byte to a counter
@@ -98,6 +103,8 @@ extern void  i86_pit_initialize ();
 //! Test if interface is initialized
 extern bool  i86_pit_is_initialized ();
 
+extern void pit_handler();
+/*
 extern void pit_handler_main(
 	uint32_t gs,uint32_t fs,uint32_t es,uint32_t ds,
 	uint32_t di,uint32_t si,uint32_t bp,uint32_t sp,
@@ -105,8 +112,8 @@ extern void pit_handler_main(
 	uint32_t ip,uint32_t cs,uintptr_t flags,
 	uint32_t user_esp, uint32_t ss);
 	
-extern void pit_handler();
 
+//*/
 //============================================================================
 //    INTERFACE OBJECT CLASS DEFINITIONS
 //============================================================================

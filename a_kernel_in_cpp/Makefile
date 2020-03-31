@@ -53,6 +53,19 @@ ctype.o: ctype.cpp
 	gcc -O0 -ffreestanding -m32 -ggdb -c $< -o $@	
 fat12a.o: fat12a.cpp
 	gcc -O0 -ffreestanding -m32 -ggdb -c $< -o $@	
+syscall.o: syscall.cpp
+	gcc -O0 -ffreestanding -m32 -ggdb -c $< -o $@	
+tss.o: tss.cpp
+	gcc -O0 -ffreestanding -m32 -ggdb -c $< -o $@	
+task.o: task.cpp
+	gcc -O0 -ffreestanding -m32 -ggdb -c $< -o $@	
+systhread.o: systhread.cpp
+	gcc -O0 -ffreestanding -m32 -ggdb -c $< -o $@	
+user.o: user.cpp
+	gcc -O0 -ffreestanding -m32 -ggdb -c $< -o $@	
+elf.o: elf.cpp
+	gcc -O0 -ffreestanding -m32 -ggdb -c $< -o $@	
+	
 	
 kernel_entry.o: kernel_entry.asm
 	nasm $< -f elf -o $@
@@ -84,7 +97,13 @@ KRNL.SYS: kernel.o \
           ide.o \
           fsys.o \
           ctype.o \
-          fat12.o 
+          fat12.o \
+          tss.o \
+          syscall.o \
+          task.o \
+          systhread.o \
+          user.o \
+          elf.o
        
 
 	ld -o $@ -m elf_i386 -Ttext 0x100000 $^ --oformat binary
@@ -114,7 +133,13 @@ kernel.elf: kernel.o \
           ide.o \
           fsys.o \
           ctype.o \
-          fat12.o 
+          fat12.o \
+          tss.o \
+          syscall.o \
+          task.o \
+          systhread.o \
+          user.o \
+          elf.o
 
 	ld -o $@ -m elf_i386 -Ttext 0x100000 $^ 
 
@@ -124,6 +149,18 @@ run: floppy.img
 floppy:
 	sudo mount -o loop floppy.img /media/floppy/
 	sudo cp KRNL.SYS /media/floppy
+	sudo cp hello.out /media/floppy
+	sudo cp a.out /media/floppy
+	sudo cp prg1.com /media/floppy
+	sudo cp prg1.txt /media/floppy
+	sudo cp prg2.com /media/floppy
+	sudo cp prg3.com /media/floppy
+	sudo cp prg4.com /media/floppy
+	sudo cp prg1.1.com /media/floppy
+	sudo cp prg1.1.txt /media/floppy
+	sudo cp prg2.1.com /media/floppy
+	sudo cp prg3.1.com /media/floppy
+	sudo cp prg4.1.com /media/floppy
 	sudo umount /media/floppy
 
 	

@@ -63,6 +63,10 @@ typedef struct _MOUNT_INFO {
 
 }MOUNT_INFO, *PMOUNT_INFO;
 
+//! Mount info
+static MOUNT_INFO _MountInfo;
+
+extern FILE fat12a_ls(const char* DirectoryName);
 extern FILE fsysFatDirectory (const char* DirectoryName);
 extern void fsysFatRead(PFILE file, unsigned char* Buffer, unsigned int Length);
 extern FILE fsysFatOpen (const char* FileName);

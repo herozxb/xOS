@@ -59,6 +59,7 @@ extern "C" void main(multiboot_info* bootinfo) {
 	//! initialize FAT12 filesystem
 	fsysFatInitialize ();
 	fat12_init();
+	
 	//printf("=============1.1==============\n");	
 	
 /*

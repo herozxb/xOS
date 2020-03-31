@@ -59,7 +59,7 @@ FILE volOpenFile (const char* fname) {
 
 		//! filename
 		char* filename = (char*) fname;
-		//printf("filename = %c\n",filename[2]);
+		printf("filename = %c\n",filename[2]);
 
 		//! in all cases, if fname[1]==':' then the first character must be device letter
 		//! FIXME: Using fname[2] do to BUG 2. Please see main.cpp for info
@@ -72,7 +72,7 @@ FILE volOpenFile (const char* fname) {
 		//! call filesystem
 		if (_FileSystems [device - 'a']) {
 
-			//printf("=start open file=\n");
+			printf("=start open file=\n");
 			//! set volume specific information and return file
 			FILE file = _FileSystems[device - 'a']->Open (filename);
 			file.deviceID = device;

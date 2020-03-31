@@ -91,7 +91,7 @@ static bootsect_t bootsector;
  */
 typedef struct phys_fat
 {
-	uint8_t entry [FAT_PHYS_SIZE * FAT_SECTOR_SIZE]; // 4608
+	uint8_t entry [FAT_PHYS_SIZE * FAT_SECTOR_SIZE]; // 4608　FAT_PHYS_SIZE=9 * FAT_SECTOR_SIZE=512
 
 } __attribute__ ((packed)) phys_fat12_t;
 static phys_fat12_t phys_fat;
@@ -100,7 +100,7 @@ typedef struct logic_fat
 {
 	// only the first 3B are used (24bits)
 	// the first two clusters (0,1) are useless
-	uint32_t entry [FAT_NUM_ENTRY]; // 3072
+	uint32_t entry [FAT_NUM_ENTRY]; // 3072 //FAT_NUM_ENTRY=3072 uint32_t=4Bytes
 
 } __attribute__ ((packed)) fat12_t;
 static fat12_t fat;
@@ -121,9 +121,9 @@ typedef struct fat12_file_attr
 // 14 sectors * 16 = 224 entries
 typedef struct FileEntry // 32B
 {
-	char name[8];
-	char extension[3];
-	fat12_file_attr_t attribute;
+	char name[8];  //ok
+	char extension[3];//ok
+	fat12_file_attr_t attribute; //ok
 	uint8_t reserved[10];
 	uint16_t time;
 	uint16_t date;
@@ -150,7 +150,7 @@ typedef struct fat_time
 
 typedef struct root_directory
 {
-	FileEntry_t entry[FAT_SECTOR_SIZE / sizeof(FileEntry_t) * FAT_ROOT_SIZE]; // 224
+	FileEntry_t entry[FAT_SECTOR_SIZE / sizeof(FileEntry_t) * FAT_ROOT_SIZE]; // 224 FAT_SECTOR_SIZE=512/sizeof(FileEntry_t) =32Bytes * 14 = 512 / 32 * 14 = 16 * 14 = 224
 
 } __attribute__ ((packed)) fat_root_t;
 
